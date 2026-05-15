@@ -49,7 +49,7 @@
     "signOut": "تسجيل الخروج",
     "email": "البريد الإلكتروني",
     "password": "كلمة المرور",
-    "emailPlaceholder": "admin@itour.local",
+    "emailPlaceholder": "mggouda@gmail.com",
     "passwordPlaceholder": "أدخل كلمة المرور",
     "rememberMe": "تذكّرني",
     "forgotPassword": "نسيت كلمة المرور؟",
@@ -88,7 +88,12 @@
     "systemSettings": "الإعدادات",
     "profile": "الملف الشخصي",
     "help": "المساعدة",
-    "system": "النظام"
+    "system": "النظام",
+    "fleetBookings": "الأسطول والحجوزات",
+    "finance": "المالية",
+    "operations": "العمليات",
+    "organization": "الهيكل التنظيمي",
+    "analytics": "التحليلات"
   },
   "dashboard": {
     "title": "لوحة التحكم",
