@@ -330,8 +330,8 @@ export function CarsClient() {
                 render={({ field }) => (
                   <AsyncCombobox
                     value={field.value ?? ''}
-                    onChange={field.onChange}
-                    loadOptions={async (q) => {
+                    onValueChange={(v) => field.onChange(v)}
+                    fetchOptions={async (q) => {
                       const res = await lookupApi.branches(q);
                       return res.map((b) => ({ value: b.id, label: b.name, description: b.city }));
                     }}

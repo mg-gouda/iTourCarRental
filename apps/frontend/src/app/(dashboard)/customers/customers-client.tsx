@@ -318,8 +318,8 @@ export function CustomersClient() {
                       render={({ field }) => (
                         <AsyncCombobox
                           value={field.value ?? ''}
-                          onChange={field.onChange}
-                          loadOptions={async (q) => {
+                          onValueChange={(v) => field.onChange(v)}
+                          fetchOptions={async (q) => {
                             const res = await lookupApi.corporateAccounts(q);
                             return res.map((a) => ({ value: a.id, label: a.name, description: a.taxNumber ?? undefined }));
                           }}
