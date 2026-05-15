@@ -89,3 +89,34 @@ pnpm dev:down
 
 **Commit:** 8653378
 **PR:** https://github.com/mg-gouda/iTourCarRental/pull/new/feat/p1-monorepo-foundation
+
+---
+
+## [2026-05-15] Phase 1 — UI Implementation (Branches, Staff, Permissions, Profile)
+
+**Phase:** Phase 1 — Foundation
+**Scope:** Full implementation of Branches CRUD, Staff CRUD, Permissions management, and Profile pages with live API calls
+**Files touched:**
+- `apps/frontend/src/components/ui/` — Button, Input, Label, Badge, Card, Dialog, Sheet, Table, Separator, Switch, Tabs, Avatar, DropdownMenu, Toaster (rebuilt), Combobox, AsyncCombobox, DataTable
+- `apps/frontend/src/lib/api.ts` — Extended with domain types + typed helpers for branches, users, profile, permissions, lookup
+- `apps/frontend/src/lib/hooks/use-debounce.ts` — New hook
+- `apps/frontend/src/lib/hooks/use-toast.ts` — New global toast store
+- `apps/frontend/src/app/(dashboard)/branches/` — Full CRUD with DataTable + Sheet form + delete dialog
+- `apps/frontend/src/app/(dashboard)/staff/` — Full CRUD with role/branch Combobox selectors + avatar initials + reset-password dialog
+- `apps/frontend/src/app/(dashboard)/system/permissions/` — Role matrix (toggle grid) + per-user overrides tab with add/remove
+- `apps/frontend/src/app/(dashboard)/profile/` — Tabs: Profile info, Change password, 2FA setup/disable, Active sessions with revoke
+- `apps/frontend/package.json` — Added `@tanstack/react-table ^8.21.3`; fixed `next-intl` to `^3.26.5`
+
+**Tests:** N/A
+**Migration:** No new migrations
+
+**Notes:**
+- All dropdowns use Combobox/AsyncCombobox — no plain `<select>` anywhere
+- DataTable: server-side pagination + client-side sort/filter; loading skeleton via animated rows
+- Permissions page: matrix is read-only for SUPER_ADMIN (always granted), live toggle for all other roles; user overrides tab has an AsyncCombobox user picker
+- Profile 2FA: setup flow shows secret + QR placeholder, verify code to enable; disable requires current password
+- Sessions tab shows device/IP/last-active with revoke buttons (current session protected)
+- Backend fix committed to `feat/p1-monorepo-foundation`: tightened permission guard, auth service, users controller; added `express.d.ts` type declaration
+
+**Commit:** (fill after push)
+**PR:** (fill after open)
