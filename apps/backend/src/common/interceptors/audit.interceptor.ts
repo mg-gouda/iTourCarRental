@@ -5,7 +5,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionUserDto } from '@car-rental/shared-types';
 
@@ -83,7 +83,7 @@ export class AuditInterceptor implements NestInterceptor {
             action,
             entityType,
             entityId,
-            after: (responseBody as Record<string, unknown>) ?? null,
+            after: responseBody ? JSON.parse(JSON.stringify(responseBody)) : undefined,
             ip: ip ?? null,
             userAgent: userAgent ?? null,
           },

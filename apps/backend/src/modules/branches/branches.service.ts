@@ -71,8 +71,8 @@ export class BranchesService {
         taxId: dto.taxId ?? null,
         taxRate: dto.taxRate ?? 0,
         taxInclusive: dto.taxInclusive ?? false,
-        businessHours: dto.businessHours ?? {},
-        holidays: dto.holidays ?? [],
+        businessHours: JSON.parse(JSON.stringify(dto.businessHours ?? {})),
+        holidays: JSON.parse(JSON.stringify(dto.holidays ?? [])),
         isActive: dto.isActive ?? true,
       },
     });
@@ -104,8 +104,8 @@ export class BranchesService {
         ...(dto.taxId !== undefined && { taxId: dto.taxId }),
         ...(dto.taxRate !== undefined && { taxRate: dto.taxRate }),
         ...(dto.taxInclusive !== undefined && { taxInclusive: dto.taxInclusive }),
-        ...(dto.businessHours !== undefined && { businessHours: dto.businessHours }),
-        ...(dto.holidays !== undefined && { holidays: dto.holidays }),
+        ...(dto.businessHours !== undefined && { businessHours: JSON.parse(JSON.stringify(dto.businessHours)) }),
+        ...(dto.holidays !== undefined && { holidays: JSON.parse(JSON.stringify(dto.holidays)) }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
     });
