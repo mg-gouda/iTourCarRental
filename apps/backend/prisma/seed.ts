@@ -4,19 +4,32 @@ import * as argon2 from 'argon2';
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@carrental.local';
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Admin1234!';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'mggouda@gmail.com';
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Win16@64';
 
   const passwordHash = await argon2.hash(adminPassword);
 
-  // 1. Upsert Super Admin
+  // 1. Upsert Super Admin — also remove any stale super-admin with a different email
+  //    so re-seeding with a new email doesn't leave orphaned admin accounts.
+  await prisma.user.deleteMany({
+    where: {
+      role: 'SUPER_ADMIN',
+      email: { not: adminEmail },
+    },
+  });
+
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { passwordHash },
+    update: {
+      passwordHash,
+      fullName: 'Mahmoud Gouda',
+      isActive: true,
+      role: 'SUPER_ADMIN',
+    },
     create: {
       email: adminEmail,
       passwordHash,
-      fullName: 'Super Admin',
+      fullName: 'Mahmoud Gouda',
       role: 'SUPER_ADMIN',
       branchScope: [],
       isActive: true,
