@@ -203,5 +203,5 @@ pnpm dev:down
 - Customers form uses tabbed Sheet: Info tab (personal details, source, flag, corporate link), License tab (primary license on create only), Notes tab (visible + internal notes)
 - All dropdowns are Combobox/AsyncCombobox per Tech Rule 1 — no plain selects
 
-**Commit:** —
-**PR:** —
+**Commit:** 6830dca
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/1
