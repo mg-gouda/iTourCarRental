@@ -120,3 +120,32 @@ pnpm dev:down
 
 **Commit:** 30887a3
 **PR:** https://github.com/mg-gouda/iTourCarRental/pull/new/feat/p1-phase1-ui
+
+---
+
+## [2026-05-15 11:18] Docker Dev Stack — Full Startup Fix
+
+**Phase:** Infrastructure (pre-Phase-2)
+**Scope:** Fix all Docker startup blockers so `pnpm dev:up` brings the full stack up clean
+**Files touched:**
+- `apps/backend/Dockerfile` — Install `@nestjs/cli@11 @swc/core @swc/cli chokidar` globally via npm so NestJS CLI can load SWC from its own module search path; add `npx tsc` steps to compile workspace packages before starting backend
+- `apps/backend/.swcrc` — Removed `paths` (NestJS CLI injects paths from tsconfig; having them in .swcrc too caused double-processing)
+- `apps/backend/tsconfig.build.json` — Set `"paths": {}` to prevent NestJS CLI from passing TypeScript path aliases to SWC (aliases compiled to broken relative paths at runtime); workspace package resolution now happens via pnpm symlinks → `packages/*/dist/`
+- `apps/backend/src/common/guards/auth.guard.ts` — `import type` for express
+- `apps/backend/src/common/guards/permission.guard.ts` — `import type` for express
+- `apps/backend/src/modules/auth/auth.controller.ts` — `import type` for express
+- `apps/backend/src/common/filters/http-exception.filter.ts` — `import type` for express
+- `apps/backend/src/common/interceptors/audit.interceptor.ts` — `import type` for express
+- `packages/permissions/src/index.ts` — Replaced `require('./role-defaults')` dynamic require with static import (was causing TS2580 in Docker where `@types/node` isn't in the package's own devDeps)
+- `packages/shared-types/src/` + `packages/permissions/src/` — Removed stale pre-compiled `.js` / `.js.map` files that had leaked into `src/`
+
+**Tests:** Manual — `curl http://localhost:4000/api/v1/health` returns `{"data":{"status":"ok"}}`; frontend at `:3000` serves login redirect
+**Migration:** None
+
+**Notes:**
+- Root cause of the SWC resolution failure: pnpm's virtual-store layout doesn't create a `node_modules/@swc/core` symlink accessible to the globally-installed `nest` CLI (which resolves modules from `/usr/local/lib/node_modules/@nestjs/cli/`, not from the project root). Solution: install SWC globally alongside the CLI.
+- Root cause of the path alias failure: NestJS CLI reads `tsconfig.build.json` paths via `tsOptions.paths` and injects them into SWC opts (see `swc-defaults.js:L28`). SWC then compiles `@car-rental/permissions` → `../../../../../packages/permissions/src` which doesn't exist at runtime. Fix: set `"paths": {}` in `tsconfig.build.json` so workspace packages are resolved via pnpm symlinks instead.
+- Stack: backend `:4000`, frontend `:3000`, postgres `:5434`, redis, mailhog `:8025`
+
+**Commit:** —
+**PR:** —
