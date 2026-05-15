@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
-// All money in smallest unit (cents-equivalent); Prisma.Decimal throughout.
+// All money in smallest unit (cents-equivalent); Decimal throughout.
 
 export interface PricingInput {
   carId: string;
@@ -28,35 +28,35 @@ export interface LineItem {
   kind: 'base_rental' | 'extra' | 'cross_branch_fee' | 'mileage_overage' | 'late_return' | 'age_surcharge' | 'fuel_charge' | 'discount';
   description: string;
   quantity: number;
-  unitAmount: Prisma.Decimal;
-  amount: Prisma.Decimal; // quantity × unitAmount, signed
+  unitAmount: Decimal;
+  amount: Decimal; // quantity × unitAmount, signed
   taxable: boolean;
 }
 
 export interface TaxLine {
   label: string;
-  rate: Prisma.Decimal;
-  taxableAmount: Prisma.Decimal;
-  taxAmount: Prisma.Decimal;
+  rate: Decimal;
+  taxableAmount: Decimal;
+  taxAmount: Decimal;
 }
 
 export interface PriceBreakdown {
   currency: string;
   lineItems: LineItem[];
-  subtotal: Prisma.Decimal;
-  discountTotal: Prisma.Decimal;
-  taxableSubtotal: Prisma.Decimal;
+  subtotal: Decimal;
+  discountTotal: Decimal;
+  taxableSubtotal: Decimal;
   taxLines: TaxLine[];
-  taxTotal: Prisma.Decimal;
-  total: Prisma.Decimal;
+  taxTotal: Decimal;
+  total: Decimal;
   ratePlanId: string;
   ratePlanVersion: number;
   billedDays: number;
   computedAt: Date;
 }
 
-function d(v: number | string): Prisma.Decimal {
-  return new Prisma.Decimal(v);
+function d(v: number | string): Decimal {
+  return new Decimal(v);
 }
 
 @Injectable()
@@ -70,7 +70,7 @@ export class PricingService {
       where: { id: input.carId },
       select: { categoryId: true, homeBranchId: true },
     });
-    const rule = ratePlan.rules.find((r) => r.categoryId === car.categoryId);
+    const rule = ratePlan.rules.find((r: any) => r.categoryId === car.categoryId);
     if (!rule) throw new Error(`No rate rule for this car category in rate plan '${ratePlan.name}'`);
 
     const branch = await this.prisma.branch.findUniqueOrThrow({
@@ -94,9 +94,9 @@ export class PricingService {
     for (const e of input.extras) {
       const extraDef = await this.prisma.extra.findUnique({ where: { id: e.extraId } });
       if (!extraDef || !extraDef.isActive) continue;
-      const priceRow = ratePlan.extras.find((ep) => ep.extraId === e.extraId);
+      const priceRow = ratePlan.extras.find((ep: any) => ep.extraId === e.extraId);
       if (!priceRow) continue;
-      const unitAmt = new Prisma.Decimal(priceRow.amount);
+      const unitAmt = new Decimal(priceRow.amount);
       const qty = extraDef.pricingMode === 'per_day' ? e.quantity * billedDays : e.quantity;
       lineItems.push({
         kind: 'extra',
@@ -118,8 +118,8 @@ export class PricingService {
           kind: 'cross_branch_fee',
           description: 'Cross-branch return fee',
           quantity: 1,
-          unitAmount: new Prisma.Decimal(fee.amount),
-          amount: new Prisma.Decimal(fee.amount),
+          unitAmount: new Decimal(fee.amount),
+          amount: new Decimal(fee.amount),
           taxable: true,
         });
       }
@@ -182,7 +182,7 @@ export class PricingService {
         const preDiscountTotal = lineItems.reduce((s, li) => s.add(li.amount), d(0));
         const discountAmt = promo.discountType === 'percent'
           ? preDiscountTotal.mul(promo.amount).div(100)
-          : new Prisma.Decimal(promo.amount);
+          : new Decimal(promo.amount);
         lineItems.push({ kind: 'discount', description: `Promo: ${promo.code}`, quantity: 1, unitAmount: discountAmt.neg(), amount: discountAmt.neg(), taxable: false });
       }
     }
@@ -193,7 +193,7 @@ export class PricingService {
     const taxableSubtotal = lineItems.filter((li) => li.taxable).reduce((s, li) => s.add(li.amount), d(0));
 
     const taxLines: TaxLine[] = [];
-    const taxRate = new Prisma.Decimal(branch.taxRate);
+    const taxRate = new Decimal(branch.taxRate);
     if (taxRate.gt(0)) {
       const taxAmt = branch.taxInclusive
         ? taxableSubtotal.mul(taxRate).div(d(1).add(taxRate))
@@ -255,7 +255,7 @@ export class PricingService {
     if (plans.length === 0) throw new Error('No applicable rate plan found for the given dates and branch');
 
     // Among tied priorities, pick narrowest window
-    plans.sort((a, b) => {
+    plans.sort((a: any, b: any) => {
       if (b.priority !== a.priority) return b.priority - a.priority;
       const aDur = a.endAt.getTime() - a.startAt.getTime();
       const bDur = b.endAt.getTime() - b.startAt.getTime();
@@ -268,7 +268,7 @@ export class PricingService {
   private computeBaseRental(
     pickupAt: Date,
     returnAt: Date,
-    rule: { dailyRate: Prisma.Decimal; weeklyRate: Prisma.Decimal | null; monthlyRate: Prisma.Decimal | null },
+    rule: { dailyRate: Decimal; weeklyRate: Decimal | null; monthlyRate: Decimal | null },
     currency: string,
   ): { days: number; items: LineItem[] } {
     const msPerDay = 24 * 60 * 60 * 1000;
@@ -288,28 +288,28 @@ export class PricingService {
       const remDays = billedDays % 30;
 
       if (months > 0) {
-        const monthlyAmt = new Prisma.Decimal(rule.monthlyRate).mul(months);
-        items.push({ kind: 'base_rental', description: `${months} month${months > 1 ? 's' : ''}`, quantity: months, unitAmount: new Prisma.Decimal(rule.monthlyRate), amount: monthlyAmt, taxable: true });
+        const monthlyAmt = new Decimal(rule.monthlyRate).mul(months);
+        items.push({ kind: 'base_rental', description: `${months} month${months > 1 ? 's' : ''}`, quantity: months, unitAmount: new Decimal(rule.monthlyRate), amount: monthlyAmt, taxable: true });
       }
       if (remDays > 0) {
-        const dailyAmt = new Prisma.Decimal(rule.dailyRate).mul(remDays);
-        items.push({ kind: 'base_rental', description: `${remDays} day${remDays > 1 ? 's' : ''}`, quantity: remDays, unitAmount: new Prisma.Decimal(rule.dailyRate), amount: dailyAmt, taxable: true });
+        const dailyAmt = new Decimal(rule.dailyRate).mul(remDays);
+        items.push({ kind: 'base_rental', description: `${remDays} day${remDays > 1 ? 's' : ''}`, quantity: remDays, unitAmount: new Decimal(rule.dailyRate), amount: dailyAmt, taxable: true });
       }
     } else if (rule.weeklyRate && billedDays >= 7) {
       const weeks = Math.floor(billedDays / 7);
       const remDays = billedDays % 7;
 
       if (weeks > 0) {
-        const weeklyAmt = new Prisma.Decimal(rule.weeklyRate).mul(weeks);
-        items.push({ kind: 'base_rental', description: `${weeks} week${weeks > 1 ? 's' : ''}`, quantity: weeks, unitAmount: new Prisma.Decimal(rule.weeklyRate), amount: weeklyAmt, taxable: true });
+        const weeklyAmt = new Decimal(rule.weeklyRate).mul(weeks);
+        items.push({ kind: 'base_rental', description: `${weeks} week${weeks > 1 ? 's' : ''}`, quantity: weeks, unitAmount: new Decimal(rule.weeklyRate), amount: weeklyAmt, taxable: true });
       }
       if (remDays > 0) {
-        const dailyAmt = new Prisma.Decimal(rule.dailyRate).mul(remDays);
-        items.push({ kind: 'base_rental', description: `${remDays} day${remDays > 1 ? 's' : ''}`, quantity: remDays, unitAmount: new Prisma.Decimal(rule.dailyRate), amount: dailyAmt, taxable: true });
+        const dailyAmt = new Decimal(rule.dailyRate).mul(remDays);
+        items.push({ kind: 'base_rental', description: `${remDays} day${remDays > 1 ? 's' : ''}`, quantity: remDays, unitAmount: new Decimal(rule.dailyRate), amount: dailyAmt, taxable: true });
       }
     } else {
-      const amt = new Prisma.Decimal(rule.dailyRate).mul(billedDays);
-      items.push({ kind: 'base_rental', description: `${billedDays} day${billedDays > 1 ? 's' : ''}`, quantity: billedDays, unitAmount: new Prisma.Decimal(rule.dailyRate), amount: amt, taxable: true });
+      const amt = new Decimal(rule.dailyRate).mul(billedDays);
+      items.push({ kind: 'base_rental', description: `${billedDays} day${billedDays > 1 ? 's' : ''}`, quantity: billedDays, unitAmount: new Decimal(rule.dailyRate), amount: amt, taxable: true });
     }
 
     return { days: billedDays, items };

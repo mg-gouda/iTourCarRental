@@ -69,7 +69,7 @@ export class AuthGuard implements CanActivate {
     }
 
     // Build effective permissions
-    const overrides = user.permissionOverrides.map((o) => ({
+    const overrides = user.permissionOverrides.map((o: any) => ({
       key: o.key,
       effect: o.effect as 'grant' | 'revoke',
     }));

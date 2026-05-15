@@ -23,7 +23,7 @@ export class CustomersService {
     flag?: string; corporateAccountId?: string;
   }) {
     const { page, limit, search, flag, corporateAccountId } = params;
-    const where: Prisma.CustomerWhereInput = {
+    const where: any = {
       deletedAt: null,
       ...(flag && { flag: flag as any }),
       ...(corporateAccountId && { corporateAccountId }),
@@ -67,7 +67,7 @@ export class CustomersService {
 
   async create(dto: CreateCustomerDto) {
     const { primaryLicense, ...customerData } = dto;
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const customer = await tx.customer.create({
         data: {
           ...customerData,
@@ -142,7 +142,7 @@ export class CustomersService {
 
   async addAdditionalDriver(bookingId: string, dto: AdditionalDriverDto) {
     const { license, ...driverData } = dto;
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const driver = await tx.additionalDriver.create({
         data: {
           bookingId,

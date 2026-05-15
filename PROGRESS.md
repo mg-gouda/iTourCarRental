@@ -251,3 +251,53 @@ pnpm dev:down
 
 **Commit:** 588fda6
 **PR:** https://github.com/mg-gouda/iTourCarRental/pull/2
+
+---
+
+## [2026-05-16] Phase 4 — Money (Payments, Invoices, Refunds, Damage & Fines)
+
+**Phase:** Phase 4 — Money
+**Scope:** Full Payments, Invoices, Refunds, and Damage & Fines modules (backend + frontend)
+
+**Files touched:**
+- `apps/backend/src/modules/payments/` — New: PaymentsModule, PaymentsService (idempotency, void), PaymentsController, dto/payment.dto.ts
+- `apps/backend/src/modules/invoices/` — New: InvoicesModule, InvoicesService (invoice generation from priceSnapshot, invoice numbering, credit notes), InvoicesController, dto/invoice.dto.ts
+- `apps/backend/src/modules/refunds/` — New: RefundsModule, RefundsService (two-person rule, cancellation policy tiers, auto-approve below threshold), RefundsController, dto/refund.dto.ts
+- `apps/backend/src/modules/damage-fines/` — New: DamageFinesModule, DamageFinesService, DamageFinesController, dto/damage-fine.dto.ts
+- `apps/backend/src/modules/lookup/lookup.controller.ts` — Extended: `GET /lookup/bookings` for async combo-box booking search
+- `apps/backend/src/modules/bookings/bookings.service.ts` — Fixed: `Prisma.InputJsonValue` → `InputJsonValue` from runtime/library; `Prisma.BookingWhereInput` → plain `Record<string, unknown>`; implicit `any` in callbacks
+- `apps/backend/src/modules/bookings/pricing.service.ts` — Fixed: `Prisma.Decimal` → `Decimal` from runtime/library; implicit `any` in callbacks
+- `apps/backend/src/modules/cars/cars.service.ts` — Fixed: same `Decimal` import
+- `apps/backend/src/modules/corporate-accounts/corporate-accounts.service.ts` — Same
+- `apps/backend/src/modules/damage-fines/damage-fines.service.ts` — Same
+- `apps/backend/src/modules/insurance/insurance.service.ts` — Same
+- `apps/backend/src/modules/invoices/invoices.service.ts` — Fixed: `InputJsonValue` import
+- `apps/backend/src/modules/customers/customers.service.ts` — Fixed implicit `any` in tx callbacks
+- `apps/backend/src/modules/permissions/permissions.service.ts` — Fixed implicit `any` and `{}` not assignable to `boolean`
+- `apps/backend/src/modules/settings/settings.service.ts` — Fixed implicit `any`
+- `apps/backend/src/common/guards/auth.guard.ts` — Fixed implicit `any`
+- `apps/backend/src/modules/auth/auth.service.ts` — Fixed implicit `any`
+- `apps/backend/src/modules/audit-log/audit-log.service.ts` — Fixed implicit `any`
+- `apps/backend/src/app.module.ts` — Added PaymentsModule, InvoicesModule, RefundsModule, DamageFinesModule
+- `apps/frontend/src/lib/api.ts` — Extended: Payment, Invoice, CreditNote, Refund, DamageRecord, Fine types + paymentsApi, invoicesApi, refundsApi, damageFinesApi; lookupApi.bookings
+- `apps/frontend/src/app/(dashboard)/payments/payments-client.tsx` — New: DataTable + kind filter + Record Payment sheet + Void dialog
+- `apps/frontend/src/app/(dashboard)/payments/page.tsx` — Updated stub to real page
+- `apps/frontend/src/app/(dashboard)/invoices/invoices-client.tsx` — New: DataTable + kind filter + Generate Invoice sheet + Invoice Detail sheet + Credit Note sheet + Void dialog
+- `apps/frontend/src/app/(dashboard)/invoices/page.tsx` — Updated
+- `apps/frontend/src/app/(dashboard)/damage-fines/damage-fines-client.tsx` — New: tabbed Damage/Fines DataTables + Record Damage sheet + Record Fine sheet + Delete confirm dialog
+- `apps/frontend/src/app/(dashboard)/damage-fines/page.tsx` — Updated
+- `apps/frontend/src/components/ui/textarea.tsx` — New: shadcn-style Textarea component
+
+**Tests:** N/A
+**Migration:** No — all Phase 4 Prisma models were already in schema
+
+**Notes:**
+- `Prisma.Decimal` and `Prisma.InputJsonValue` do NOT exist in Prisma 6 with this client setup; use `Decimal` / `InputJsonValue` from `@prisma/client/runtime/library` directly
+- `Prisma.XyzWhereInput` types not exported either — use `any` for where clause types
+- Refunds: auto-approve if amount < `two_person_refund_threshold` setting; two-person rule enforced otherwise (approver ≠ requester)
+- Invoice numbering: `{BRANCH_CODE}-{YEAR}-{0001}` — sequence per branch/year via count() on invoice table
+- `lookupApi.bookings` endpoint added: returns `{ id, bookingNumber, customer: { fullName } }` — used by payment/invoice/damage-fine async comboboxes
+- No PDF generation yet — stubbed as 501 Not Implemented in invoices service
+
+**Commit:** TBD
+**PR:** TBD

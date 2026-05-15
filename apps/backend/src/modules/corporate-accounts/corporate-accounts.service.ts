@@ -1,3 +1,4 @@
+import { Decimal } from '@prisma/client/runtime/library';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateCorporateAccountDto, UpdateCorporateAccountDto } from './dto/corporate-account.dto';
@@ -48,7 +49,7 @@ export class CorporateAccountsService {
     return this.prisma.corporateAccount.create({
       data: {
         ...dto,
-        creditLimit: dto.creditLimit ? new Prisma.Decimal(dto.creditLimit) : undefined,
+        creditLimit: dto.creditLimit ? new Decimal(dto.creditLimit) : undefined,
       },
     });
   }
@@ -59,7 +60,7 @@ export class CorporateAccountsService {
       where: { id },
       data: {
         ...dto,
-        creditLimit: dto.creditLimit ? new Prisma.Decimal(dto.creditLimit) : undefined,
+        creditLimit: dto.creditLimit ? new Decimal(dto.creditLimit) : undefined,
       },
     });
   }

@@ -1,3 +1,4 @@
+import { Decimal } from '@prisma/client/runtime/library';
 import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -57,7 +58,7 @@ export class CarsService {
     branchId?: string; search?: string;
   }) {
     const { page, limit, status, categoryId, branchId, search } = params;
-    const where: Prisma.CarWhereInput = {
+    const where: any = {
       deletedAt: null,
       ...(status && { status: status as any }),
       ...(categoryId && { categoryId }),
@@ -103,7 +104,7 @@ export class CarsService {
     return this.prisma.car.create({
       data: {
         ...dto,
-        purchaseCost: dto.purchaseCost ? new Prisma.Decimal(dto.purchaseCost) : undefined,
+        purchaseCost: dto.purchaseCost ? new Decimal(dto.purchaseCost) : undefined,
         purchasedAt: dto.purchasedAt ? new Date(dto.purchasedAt) : undefined,
         registrationExpiry: dto.registrationExpiry ? new Date(dto.registrationExpiry) : undefined,
       },
@@ -120,7 +121,7 @@ export class CarsService {
       where: { id },
       data: {
         ...dto,
-        purchaseCost: dto.purchaseCost ? new Prisma.Decimal(dto.purchaseCost) : undefined,
+        purchaseCost: dto.purchaseCost ? new Decimal(dto.purchaseCost) : undefined,
         purchasedAt: dto.purchasedAt ? new Date(dto.purchasedAt) : undefined,
         registrationExpiry: dto.registrationExpiry ? new Date(dto.registrationExpiry) : undefined,
       },

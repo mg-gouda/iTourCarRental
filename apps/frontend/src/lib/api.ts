@@ -239,6 +239,10 @@ export const lookupApi = {
     if (params.branchId) p.set('branchId', params.branchId);
     return api.get<Array<{ id: string; make: string; model: string; year: number; licensePlate: string; category: { id: string; name: string }; homeBranch: { id: string; name: string } }>>(`/lookup/available-cars?${p}`);
   },
+  bookings: (q: string) =>
+    api.get<Array<{ id: string; bookingNumber: string; customer: { id: string; fullName: string } }>>(
+      `/lookup/bookings?q=${encodeURIComponent(q)}`,
+    ),
 };
 
 // ─── Car types ───────────────────────────────────────────────────────────────
@@ -682,4 +686,234 @@ export const bookingsApi = {
     if (branchId) q.set('branchId', branchId);
     return api.get<CalendarEntry[]>(`/bookings/calendar?${q}`);
   },
+};
+
+// ─── Payment types ────────────────────────────────────────────────────────────
+
+export type PaymentKind = 'RENTAL' | 'DEPOSIT' | 'ADDENDUM';
+export type PaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER';
+
+export interface Payment {
+  id: string;
+  bookingId: string;
+  kind: PaymentKind;
+  method: PaymentMethod;
+  amount: string;
+  currency: string;
+  reference: string | null;
+  recordedById: string;
+  recordedBy: { id: string; fullName: string };
+  recordedAt: string;
+  idempotencyKey: string;
+  voidedAt: string | null;
+  voidedById: string | null;
+  voidReason: string | null;
+  booking: { id: string; bookingNumber: string; customer: { id: string; fullName: string } };
+}
+
+export interface CreatePaymentDto {
+  bookingId: string;
+  kind: PaymentKind;
+  method: PaymentMethod;
+  amount: string;
+  currency: string;
+  reference?: string;
+  idempotencyKey: string;
+}
+
+export const paymentsApi = {
+  list: (params?: { page?: number; limit?: number; bookingId?: string; kind?: string; from?: string; to?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.bookingId) q.set('bookingId', params.bookingId);
+    if (params?.kind) q.set('kind', params.kind);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    return api.get<PaginatedResponse<Payment>>(`/payments?${q}`);
+  },
+  get: (id: string) => api.get<Payment>(`/payments/${id}`),
+  create: (dto: CreatePaymentDto) =>
+    api.post<Payment>('/payments', dto, { headers: { 'Idempotency-Key': dto.idempotencyKey } }),
+  void: (id: string, reason: string) => api.post<Payment>(`/payments/${id}/void`, { reason }),
+};
+
+// ─── Invoice types ────────────────────────────────────────────────────────────
+
+export interface CreditNote {
+  id: string;
+  creditNoteNumber: string;
+  invoiceId: string;
+  amount: string;
+  currency: string;
+  reason: string;
+  lineItems: unknown[];
+  issuedAt: string;
+  language: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  branchId: string;
+  bookingId: string;
+  kind: 'rental' | 'addendum';
+  issuedAt: string;
+  dueAt: string | null;
+  currency: string;
+  subtotal: string;
+  discountTotal: string;
+  taxTotal: string;
+  total: string;
+  lineItems: unknown[];
+  taxLines: unknown[];
+  pdfKey: string | null;
+  language: string;
+  voidedAt: string | null;
+  voidedReason: string | null;
+  creditNotes: CreditNote[];
+  booking: { id: string; bookingNumber: string; customer: { id: string; fullName: string } };
+}
+
+export const invoicesApi = {
+  list: (params?: { page?: number; limit?: number; bookingId?: string; branchId?: string; kind?: string; from?: string; to?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.bookingId) q.set('bookingId', params.bookingId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.kind) q.set('kind', params.kind);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    return api.get<PaginatedResponse<Invoice>>(`/invoices?${q}`);
+  },
+  get: (id: string) => api.get<Invoice>(`/invoices/${id}`),
+  generate: (bookingId: string, language?: string) =>
+    api.post<Invoice>('/invoices/generate', { bookingId, language: language ?? 'en' }),
+  void: (id: string, reason: string) => api.post<Invoice>(`/invoices/${id}/void`, { reason }),
+  issueCreditNote: (id: string, dto: { amount: string; reason: string; language?: string }) =>
+    api.post<CreditNote>(`/invoices/${id}/credit-notes`, dto),
+};
+
+// ─── Refund types ─────────────────────────────────────────────────────────────
+
+export type RefundStatus = 'pending' | 'approved' | 'paid' | 'rejected';
+
+export interface Refund {
+  id: string;
+  bookingId: string;
+  paymentId: string | null;
+  invoiceId: string | null;
+  amount: string;
+  currency: string;
+  reason: string;
+  requestedById: string;
+  requestedBy: { id: string; fullName: string };
+  approvedById: string | null;
+  approvedBy: { id: string; fullName: string } | null;
+  status: RefundStatus;
+  createdAt: string;
+  paidAt: string | null;
+  idempotencyKey: string;
+  booking: { id: string; bookingNumber: string; customer: { id: string; fullName: string } };
+}
+
+export interface CreateRefundDto {
+  bookingId: string;
+  reason: string;
+  amount?: string;
+  currency?: string;
+  paymentId?: string;
+  invoiceId?: string;
+  idempotencyKey: string;
+}
+
+export const refundsApi = {
+  list: (params?: { page?: number; limit?: number; bookingId?: string; status?: string; from?: string; to?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.bookingId) q.set('bookingId', params.bookingId);
+    if (params?.status) q.set('status', params.status);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    return api.get<PaginatedResponse<Refund>>(`/refunds?${q}`);
+  },
+  get: (id: string) => api.get<Refund>(`/refunds/${id}`),
+  create: (dto: CreateRefundDto) => api.post<Refund>('/refunds', dto),
+  approve: (id: string) => api.post<Refund>(`/refunds/${id}/approve`),
+  reject: (id: string, reason?: string) => api.post<Refund>(`/refunds/${id}/reject`, { reason }),
+  markPaid: (id: string) => api.post<Refund>(`/refunds/${id}/mark-paid`),
+};
+
+// ─── Damage & Fines types ─────────────────────────────────────────────────────
+
+export interface DamageRecord {
+  id: string;
+  bookingId: string;
+  inspectionId: string | null;
+  description: string;
+  estimatedCost: string;
+  currency: string;
+  createdAt: string;
+  booking: { id: string; bookingNumber: string; customer: { id: string; fullName: string } };
+}
+
+export interface Fine {
+  id: string;
+  bookingId: string;
+  kind: string;
+  externalRef: string | null;
+  occurredAt: string;
+  amount: string;
+  currency: string;
+  serviceFee: string | null;
+  notes: string | null;
+  createdAt: string;
+  booking: { id: string; bookingNumber: string; customer: { id: string; fullName: string } };
+}
+
+export interface CreateDamageDto {
+  bookingId: string;
+  description: string;
+  estimatedCost: string;
+  currency: string;
+  inspectionId?: string;
+}
+
+export interface CreateFineDto {
+  bookingId: string;
+  kind: string;
+  amount: string;
+  currency: string;
+  occurredAt: string;
+  externalRef?: string;
+  serviceFee?: string;
+  notes?: string;
+}
+
+export const damageFinesApi = {
+  listDamage: (params?: { page?: number; limit?: number; bookingId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.bookingId) q.set('bookingId', params.bookingId);
+    return api.get<PaginatedResponse<DamageRecord>>(`/damage-fines/damage?${q}`);
+  },
+  createDamage: (dto: CreateDamageDto) => api.post<DamageRecord>('/damage-fines/damage', dto),
+  updateDamage: (id: string, dto: Partial<Omit<CreateDamageDto, 'bookingId'>>) =>
+    api.patch<DamageRecord>(`/damage-fines/damage/${id}`, dto),
+  deleteDamage: (id: string) => api.delete<void>(`/damage-fines/damage/${id}`),
+
+  listFines: (params?: { page?: number; limit?: number; bookingId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.bookingId) q.set('bookingId', params.bookingId);
+    return api.get<PaginatedResponse<Fine>>(`/damage-fines/fines?${q}`);
+  },
+  createFine: (dto: CreateFineDto) => api.post<Fine>('/damage-fines/fines', dto),
+  updateFine: (id: string, dto: Partial<Omit<CreateFineDto, 'bookingId'>>) =>
+    api.patch<Fine>(`/damage-fines/fines/${id}`, dto),
+  deleteFine: (id: string) => api.delete<void>(`/damage-fines/fines/${id}`),
 };

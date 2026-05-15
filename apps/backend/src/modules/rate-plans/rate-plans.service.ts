@@ -1,3 +1,4 @@
+import { Decimal } from '@prisma/client/runtime/library';
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -11,7 +12,7 @@ export class RatePlansService {
 
   async listRatePlans(query: { branchId?: string; active?: boolean; page?: number; limit?: number }) {
     const { branchId, active, page = 1, limit = 20 } = query;
-    const where: Prisma.RatePlanWhereInput = {
+    const where: any = {
       ...(branchId && { branchId }),
       ...(active !== undefined && { isActive: active }),
     };
@@ -50,9 +51,9 @@ export class RatePlansService {
           ? {
               create: rules.map((r) => ({
                 categoryId: r.categoryId,
-                dailyRate: new Prisma.Decimal(r.dailyRate),
-                weeklyRate: r.weeklyRate != null ? new Prisma.Decimal(r.weeklyRate) : undefined,
-                monthlyRate: r.monthlyRate != null ? new Prisma.Decimal(r.monthlyRate) : undefined,
+                dailyRate: new Decimal(r.dailyRate),
+                weeklyRate: r.weeklyRate != null ? new Decimal(r.weeklyRate) : undefined,
+                monthlyRate: r.monthlyRate != null ? new Decimal(r.monthlyRate) : undefined,
                 currency: r.currency,
               })),
             }
@@ -87,17 +88,17 @@ export class RatePlansService {
     return this.prisma.rateRule.upsert({
       where: { ratePlanId_categoryId: { ratePlanId, categoryId } },
       update: {
-        dailyRate: new Prisma.Decimal(data.dailyRate),
-        weeklyRate: data.weeklyRate != null ? new Prisma.Decimal(data.weeklyRate) : undefined,
-        monthlyRate: data.monthlyRate != null ? new Prisma.Decimal(data.monthlyRate) : undefined,
+        dailyRate: new Decimal(data.dailyRate),
+        weeklyRate: data.weeklyRate != null ? new Decimal(data.weeklyRate) : undefined,
+        monthlyRate: data.monthlyRate != null ? new Decimal(data.monthlyRate) : undefined,
         currency: data.currency,
       },
       create: {
         ratePlanId,
         categoryId,
-        dailyRate: new Prisma.Decimal(data.dailyRate),
-        weeklyRate: data.weeklyRate != null ? new Prisma.Decimal(data.weeklyRate) : undefined,
-        monthlyRate: data.monthlyRate != null ? new Prisma.Decimal(data.monthlyRate) : undefined,
+        dailyRate: new Decimal(data.dailyRate),
+        weeklyRate: data.weeklyRate != null ? new Decimal(data.weeklyRate) : undefined,
+        monthlyRate: data.monthlyRate != null ? new Decimal(data.monthlyRate) : undefined,
         currency: data.currency,
       },
       include: { category: true },
@@ -138,8 +139,8 @@ export class RatePlansService {
     await this.getRatePlan(ratePlanId);
     return this.prisma.extraPrice.upsert({
       where: { extraId_ratePlanId: { extraId: dto.extraId, ratePlanId } },
-      update: { amount: new Prisma.Decimal(dto.amount), currency: dto.currency },
-      create: { extraId: dto.extraId, ratePlanId, amount: new Prisma.Decimal(dto.amount), currency: dto.currency },
+      update: { amount: new Decimal(dto.amount), currency: dto.currency },
+      create: { extraId: dto.extraId, ratePlanId, amount: new Decimal(dto.amount), currency: dto.currency },
     });
   }
 

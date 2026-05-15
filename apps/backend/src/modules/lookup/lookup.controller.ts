@@ -147,6 +147,28 @@ export class LookupController {
     });
   }
 
+  @Get('bookings')
+  async bookings(@Query('q') q = '', @Query('limit') limit = 20) {
+    return this.prisma.booking.findMany({
+      where: {
+        deletedAt: null,
+        ...(q ? {
+          OR: [
+            { bookingNumber: { contains: q, mode: 'insensitive' } },
+            { customer: { fullName: { contains: q, mode: 'insensitive' } } },
+          ],
+        } : {}),
+      },
+      select: {
+        id: true,
+        bookingNumber: true,
+        customer: { select: { id: true, fullName: true } },
+      },
+      take: Math.min(Number(limit), 100),
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   @Get('available-cars')
   async availableCars(
     @Query('q') q = '',
@@ -166,7 +188,7 @@ export class LookupController {
             returnAt: { gt: new Date(pickupAt) },
           },
           select: { carId: true },
-        })).map((b) => b.carId)
+        })).map((b: any) => b.carId)
       : [];
 
     return this.prisma.car.findMany({

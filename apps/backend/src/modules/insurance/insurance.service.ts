@@ -1,3 +1,4 @@
+import { Decimal } from '@prisma/client/runtime/library';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateInsurancePolicyDto, UpdateInsurancePolicyDto, CreateInsuranceClaimDto } from './dto/insurance.dto';
@@ -28,7 +29,7 @@ export class InsuranceService {
     return this.prisma.insurancePolicy.create({
       data: {
         ...dto,
-        premium: dto.premium ? new Prisma.Decimal(dto.premium) : undefined,
+        premium: dto.premium ? new Decimal(dto.premium) : undefined,
         startAt: new Date(dto.startAt),
         expiryAt: new Date(dto.expiryAt),
       },
@@ -41,7 +42,7 @@ export class InsuranceService {
       where: { id },
       data: {
         ...dto,
-        premium: dto.premium ? new Prisma.Decimal(dto.premium) : undefined,
+        premium: dto.premium ? new Decimal(dto.premium) : undefined,
         startAt: dto.startAt ? new Date(dto.startAt) : undefined,
         expiryAt: dto.expiryAt ? new Date(dto.expiryAt) : undefined,
       },
@@ -59,7 +60,7 @@ export class InsuranceService {
       data: {
         policyId,
         ...dto,
-        amount: dto.amount ? new Prisma.Decimal(dto.amount) : undefined,
+        amount: dto.amount ? new Decimal(dto.amount) : undefined,
         filedAt: new Date(dto.filedAt),
         resolvedAt: dto.resolvedAt ? new Date(dto.resolvedAt) : undefined,
       },

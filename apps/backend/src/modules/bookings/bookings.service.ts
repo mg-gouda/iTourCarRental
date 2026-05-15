@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PricingService } from './pricing.service';
-import { Prisma } from '@prisma/client';
+import { InputJsonValue } from '@prisma/client/runtime/library';
 import { CreateBookingDto, UpdateBookingDto, CancelBookingDto, CheckinDto, CheckoutDto, QuoteDto } from './dto/booking.dto';
 
 const BOOKING_SELECT = {
@@ -57,7 +57,7 @@ export class BookingsService {
     from?: string; to?: string;
   }) {
     const { page = 1, limit = 20, search, status, carId, customerId, branchId, from, to } = query;
-    const where: Prisma.BookingWhereInput = {
+    const where: Record<string, unknown> = {
       deletedAt: null,
       ...(status && { status: status as any }),
       ...(carId && { carId }),
@@ -158,10 +158,10 @@ export class BookingsService {
         promoCodeId,
         ratePlanId: breakdown.ratePlanId,
         ratePlanVersion: breakdown.ratePlanVersion,
-        priceSnapshot: this.pricing.serializeBreakdown(breakdown) as Prisma.InputJsonValue,
+        priceSnapshot: this.pricing.serializeBreakdown(breakdown) as InputJsonValue,
         currency: breakdown.currency,
         totalAmount: breakdown.total,
-        licenseSnapshot: licenseSnapshot as Prisma.InputJsonValue,
+        licenseSnapshot: licenseSnapshot as InputJsonValue,
         leavesCountry: dto.leavesCountry ?? false,
         internalNotes: dto.internalNotes,
         visibleNotes: dto.visibleNotes,
@@ -171,7 +171,7 @@ export class BookingsService {
               create: dto.extras.map((e) => ({
                 extraId: e.extraId,
                 quantity: e.quantity,
-                unitAmount: new Prisma.Decimal(0), // filled from breakdown
+                unitAmount: 0,
                 currency: breakdown.currency,
               })),
             }
@@ -218,7 +218,7 @@ export class BookingsService {
     const booking = await this.get(id);
     if (booking.status !== 'CONFIRMED') throw new BadRequestException('Booking must be CONFIRMED to check in');
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       await tx.inspection.create({
         data: {
           bookingId: id,
@@ -256,7 +256,7 @@ export class BookingsService {
       returnAt: new Date(booking.returnAt),
       driverAge: 30,
       additionalDrivers: [],
-      extras: booking.extras.map((e) => ({ extraId: e.extraId, quantity: e.quantity })),
+      extras: booking.extras.map((e: any) => ({ extraId: e.extraId, quantity: e.quantity })),
       fuelPolicy: booking.fuelPolicy as any,
       mileageAllowancePerDay: booking.mileageAllowancePerDay,
       referenceTime: actualReturnAt,
@@ -265,7 +265,7 @@ export class BookingsService {
       actualFuelLevel: dto.fuelLevel,
     });
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       await tx.inspection.create({
         data: {
           bookingId: id,
@@ -284,7 +284,7 @@ export class BookingsService {
           status: 'COMPLETED',
           actualReturnAt,
           totalAmount: finalBreakdown.total,
-          priceSnapshot: this.pricing.serializeBreakdown(finalBreakdown) as Prisma.InputJsonValue,
+          priceSnapshot: this.pricing.serializeBreakdown(finalBreakdown) as InputJsonValue,
           updatedById: userId,
         },
         select: BOOKING_SELECT,
