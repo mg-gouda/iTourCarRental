@@ -249,5 +249,5 @@ pnpm dev:down
 - Calendar groups bookings by car, 1-week window, Mon–Sun, forward/back navigation, today button
 - `DriverLicense` schema uses `number` (not `licenseNumber`), `country` (not `issuingCountry`), `expiryAt` (not `expiryDate`) — DTO field names differ from DB
 
-**Commit:** TBD
-**PR:** TBD
+**Commit:** 588fda6
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/2
