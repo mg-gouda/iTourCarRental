@@ -59,8 +59,41 @@ pnpm dev:down
 **Tests:** N/A
 **Migration:** N/A
 **Notes:** Specs written; code not yet started.
-**Commit:** —
-**PR:** —
+**Commit:** fe5ae66
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/new/feat/p1-phase1-ui
+
+---
+
+## [2026-05-15 12:00] Auth Fix — Direct Browser Login + Credential Reset + Phase 2 Modules
+
+**Phase:** Phase 1 fix + Phase 2 start
+**Scope:** Fix auth flow (browser→backend direct fetch); reset admin credentials; add Cars/Customers/Corporate Accounts/Insurance backend modules
+
+**Files touched:**
+- `.env.example` — `SEED_ADMIN_EMAIL=mggouda@gmail.com`, `SEED_ADMIN_PASSWORD=Win16@64`
+- `apps/backend/prisma/seed.ts` — Reset defaults to mggouda@gmail.com / Win16@64; added stale super-admin cleanup before upsert
+- `apps/frontend/src/lib/auth.ts` — Rewrote: Auth.js is now purely a JWT/session store; `authorize()` just parses `_user` JSON — no backend call
+- `apps/frontend/src/app/(auth)/login/page.tsx` — Login page calls `POST /api/v1/auth/login` directly from browser with `credentials: 'include'` so browser receives `sid` httpOnly cookie; passes user object to `signIn('credentials', { _user })` for JWT storage
+- `apps/backend/src/modules/cars/` — New: CarsModule, CarsService, CarsController (CRUD + list/search), CreateCarDto
+- `apps/backend/src/modules/customers/` — New: CustomersModule, CustomersService, CustomersController, CustomerDto
+- `apps/backend/src/modules/corporate-accounts/` — New: full CRUD module
+- `apps/backend/src/modules/insurance/` — New: InsurancePoliciesModule
+- `apps/backend/src/modules/lookup/lookup.controller.ts` — Extended: cars + customers + corporate-accounts lookup endpoints
+- `apps/backend/src/app.module.ts` — Wired all new modules
+- `apps/frontend/src/lib/api.ts` — Expanded: typed helpers for cars, customers, corporate accounts, insurance
+- `apps/frontend/src/app/(dashboard)/cars/page.tsx` + `cars-client.tsx` — Scaffolded cars list with DataTable
+- `apps/frontend/src/app/(dashboard)/customers/page.tsx` — Scaffolded customers list
+
+**Tests:** N/A
+**Migration:** No new migrations (new modules use existing Prisma schema)
+
+**Notes:**
+- The core auth bug: original `auth.ts` called backend server-side — the `sid` cookie went to the Next.js server process, not the browser. Fix: login page calls backend directly from browser.
+- Admin credentials: `mggouda@gmail.com` / `Win16@64` — takes effect on next `pnpm dev:up` (seed re-runs on container start)
+- To verify login: `pnpm dev:up`, open http://localhost:3000, sign in with `mggouda@gmail.com` / `Win16@64`
+
+**Commit:** 6245271
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/new/feat/p1-phase1-ui
 
 ---
 
