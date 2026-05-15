@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { PlusIcon, PencilIcon, TrashIcon, ArrowsRightLeftIcon } from '@heroicons/react/24/outline';
+import { Plus, Pencil, Trash2, ArrowLeftRight } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -105,10 +105,10 @@ function useColumns(onEdit: (car: Car) => void, onDelete: (car: Car) => void) {
       cell: ({ row }) => (
         <div className="flex gap-1 justify-end">
           <Button size="icon" variant="ghost" onClick={() => onEdit(row.original)}>
-            <PencilIcon className="h-4 w-4" />
+            <Pencil className="h-4 w-4" />
           </Button>
           <Button size="icon" variant="ghost" onClick={() => onDelete(row.original)}>
-            <TrashIcon className="h-4 w-4 text-destructive" />
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       ),
@@ -212,7 +212,7 @@ export function CarsClient() {
           <p className="text-sm text-muted-foreground">Manage vehicles, categories, and transfers</p>
         </div>
         <Button onClick={openCreate}>
-          <PlusIcon className="h-4 w-4 mr-2" /> Add Car
+          <Plus className="h-4 w-4 mr-2" /> Add Car
         </Button>
       </div>
 

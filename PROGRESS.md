@@ -180,5 +180,28 @@ pnpm dev:down
 - Root cause of the path alias failure: NestJS CLI reads `tsconfig.build.json` paths via `tsOptions.paths` and injects them into SWC opts (see `swc-defaults.js:L28`). SWC then compiles `@car-rental/permissions` → `../../../../../packages/permissions/src` which doesn't exist at runtime. Fix: set `"paths": {}` in `tsconfig.build.json` so workspace packages are resolved via pnpm symlinks instead.
 - Stack: backend `:4000`, frontend `:3000`, postgres `:5434`, redis, mailhog `:8025`
 
+**Commit:** fe5ae66
+**PR:** —
+
+---
+
+## [2026-05-15] Phase 2 — Fleet & Customers Frontend Pages
+
+**Phase:** Phase 2 — Fleet & Customers
+**Scope:** Frontend CRUD pages for Cars, Customers, and Corporate Accounts; icon library fix (heroicons → lucide-react)
+**Files touched:**
+- `apps/frontend/src/app/(dashboard)/cars/cars-client.tsx` — Fixed icons (heroicons → lucide-react): Plus, Pencil, Trash2, ArrowLeftRight
+- `apps/frontend/src/app/(dashboard)/customers/customers-client.tsx` — New: tabbed Sheet (Info/License/Notes), flag badges, AsyncCombobox for corporate account
+- `apps/frontend/src/app/(dashboard)/corporate-accounts/corporate-accounts-client.tsx` — New: CRUD with credit limit/currency display
+- `apps/frontend/src/app/(dashboard)/corporate-accounts/page.tsx` — Updated to import CorporateAccountsClient
+
+**Tests:** N/A
+**Migration:** None
+
+**Notes:**
+- All three pages use lucide-react icons (project standard — @heroicons/react is NOT installed)
+- Customers form uses tabbed Sheet: Info tab (personal details, source, flag, corporate link), License tab (primary license on create only), Notes tab (visible + internal notes)
+- All dropdowns are Combobox/AsyncCombobox per Tech Rule 1 — no plain selects
+
 **Commit:** —
 **PR:** —
