@@ -118,5 +118,5 @@ pnpm dev:down
 - Sessions tab shows device/IP/last-active with revoke buttons (current session protected)
 - Backend fix committed to `feat/p1-monorepo-foundation`: tightened permission guard, auth service, users controller; added `express.d.ts` type declaration
 
-**Commit:** (fill after push)
-**PR:** (fill after open)
+**Commit:** 30887a3
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/new/feat/p1-phase1-ui
