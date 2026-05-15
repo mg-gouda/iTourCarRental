@@ -4,19 +4,32 @@ import * as argon2 from 'argon2';
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@carrental.local';
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Admin1234!';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'mggouda@gmail.com';
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Win16@64';
 
   const passwordHash = await argon2.hash(adminPassword);
 
-  // 1. Upsert Super Admin
+  // 1. Upsert Super Admin — also remove any stale super-admin with a different email
+  //    so re-seeding with a new email doesn't leave orphaned admin accounts.
+  await prisma.user.deleteMany({
+    where: {
+      role: 'SUPER_ADMIN',
+      email: { not: adminEmail },
+    },
+  });
+
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { passwordHash },
+    update: {
+      passwordHash,
+      fullName: 'Mahmoud Gouda',
+      isActive: true,
+      role: 'SUPER_ADMIN',
+    },
     create: {
       email: adminEmail,
       passwordHash,
-      fullName: 'Super Admin',
+      fullName: 'Mahmoud Gouda',
       role: 'SUPER_ADMIN',
       branchScope: [],
       isActive: true,
@@ -240,6 +253,94 @@ async function main() {
     });
   }
   console.log(`✓ Feature flags seeded: ${featureFlags.map((f) => f.key).join(', ')}`);
+
+  // 7. Booking overlap exclusion constraint (idempotent)
+  // Requires btree_gist extension; skipped gracefully if unavailable in this environment.
+  try {
+    await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS btree_gist`);
+    await prisma.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'booking_no_overlap'
+        ) THEN
+          ALTER TABLE "Booking" ADD CONSTRAINT booking_no_overlap
+            EXCLUDE USING gist (
+              "carId" WITH =,
+              tstzrange("pickupAt"::timestamptz, "returnAt"::timestamptz, '[)') WITH &&
+            )
+            WHERE ("status" IN ('HOLD', 'CONFIRMED', 'ACTIVE') AND "deletedAt" IS NULL);
+        END IF;
+      END$$;
+    `);
+    console.log('✓ Booking overlap exclusion constraint ensured');
+  } catch (e: any) {
+    console.warn('⚠ Booking overlap exclusion constraint skipped (service-layer enforcement active):', e?.message?.split('\n')[0]);
+  }
+
+  // 8. Default extras
+  const defaultExtras = [
+    { code: 'gps', name: 'GPS Navigation', pricingMode: 'per_day' },
+    { code: 'child_seat', name: 'Child Seat', pricingMode: 'per_day' },
+    { code: 'additional_driver', name: 'Additional Driver', pricingMode: 'per_day' },
+    { code: 'insurance_basic', name: 'Basic Insurance', pricingMode: 'per_day' },
+    { code: 'insurance_full', name: 'Full Coverage Insurance', pricingMode: 'per_day' },
+  ];
+
+  for (const extra of defaultExtras) {
+    await prisma.extra.upsert({
+      where: { code: extra.code },
+      update: {},
+      create: { ...extra, isActive: true },
+    });
+  }
+  console.log(`✓ Default extras seeded: ${defaultExtras.map((e) => e.code).join(', ')}`);
+
+  // 9. Default RatePlan for Cairo branch
+  const dbCategories = await prisma.carCategory.findMany({ select: { id: true, name: true } });
+  const caiPlan = await prisma.ratePlan.upsert({
+    where: { id: 'seed-cairo-default' },
+    update: {},
+    create: {
+      id: 'seed-cairo-default',
+      name: 'Cairo Default',
+      branchId: branch.id,
+      startAt: new Date('2020-01-01'),
+      endAt: new Date('2099-12-31'),
+      priority: 0,
+      isActive: true,
+    },
+  });
+
+  const dailyRates: Record<string, number> = {
+    Economy: 200, Compact: 280, Midsize: 350, SUV: 500, Luxury: 800, Van: 450,
+  };
+
+  for (const cat of dbCategories) {
+    await prisma.rateRule.upsert({
+      where: { ratePlanId_categoryId: { ratePlanId: caiPlan.id, categoryId: cat.id } },
+      update: {},
+      create: {
+        ratePlanId: caiPlan.id,
+        categoryId: cat.id,
+        dailyRate: dailyRates[cat.name] ?? 300,
+        weeklyRate: (dailyRates[cat.name] ?? 300) * 6,
+        monthlyRate: (dailyRates[cat.name] ?? 300) * 22,
+        currency: 'EGP',
+      },
+    });
+  }
+  console.log(`✓ Default rate plan seeded: Cairo Default (${dbCategories.length} categories)`);
+
+  // 10. Branch settings for pricing (young driver threshold, grace period)
+  const branchPricingSettings = [
+    { key: `branch_${branch.id}_young_driver_age`, value: { threshold: 25, surchargePerDay: 50, currency: 'EGP' } },
+    { key: `branch_${branch.id}_late_return_grace`, value: { graceMinutes: 60, penaltyPerHour: 30, currency: 'EGP' } },
+  ];
+  for (const s of branchPricingSettings) {
+    await prisma.setting.upsert({ where: { key: s.key }, update: {}, create: { key: s.key, value: s.value, updatedById: admin.id } });
+  }
+  console.log('✓ Branch pricing settings seeded');
 
   console.log('\n✅ Seed complete');
 }

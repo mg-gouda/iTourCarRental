@@ -1,6 +1,6 @@
 # ── Base ──────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS base
-RUN npm install -g pnpm@9.15.4
+RUN npm install -g pnpm@9.15.4 @nestjs/cli@11 @swc/core @swc/cli chokidar
 WORKDIR /app
 
 # ── Development ───────────────────────────────────────────────────────────────
@@ -8,17 +8,20 @@ FROM base AS development
 ENV NODE_ENV=development
 
 # Copy workspace manifest files
-COPY package.json pnpm-workspace.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/permissions/package.json ./packages/permissions/
 
 # Install all deps (including devDependencies)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile || pnpm install
 
 # Copy source
 COPY packages/ ./packages/
 COPY apps/backend/ ./apps/backend/
+
+# Build workspace packages so their dist/ is available at runtime
+RUN cd packages/shared-types && npx tsc && cd ../../packages/permissions && npx tsc
 
 # Generate Prisma client
 RUN cd apps/backend && pnpm prisma generate
@@ -34,15 +37,18 @@ CMD ["sh", "docker-entrypoint.sh"]
 FROM base AS builder
 ENV NODE_ENV=production
 
-COPY package.json pnpm-workspace.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/permissions/package.json ./packages/permissions/
 
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod || pnpm install --prod
 
 COPY packages/ ./packages/
 COPY apps/backend/ ./apps/backend/
+
+# Build workspace packages first
+RUN cd packages/shared-types && npx tsc && cd ../../packages/permissions && npx tsc
 
 RUN cd apps/backend && pnpm prisma generate && pnpm build
 

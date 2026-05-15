@@ -10,7 +10,7 @@ export class SettingsService {
       orderBy: { key: 'asc' },
     });
 
-    return Object.fromEntries(settings.map((s) => [s.key, s.value]));
+    return Object.fromEntries(settings.map((s: any) => [s.key, s.value]));
   }
 
   async findOne(key: string) {

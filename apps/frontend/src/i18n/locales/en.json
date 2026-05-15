@@ -49,7 +49,7 @@
     "signOut": "Sign out",
     "email": "Email address",
     "password": "Password",
-    "emailPlaceholder": "admin@itour.local",
+    "emailPlaceholder": "mggouda@gmail.com",
     "passwordPlaceholder": "Enter your password",
     "rememberMe": "Remember me",
     "forgotPassword": "Forgot password?",
@@ -88,7 +88,12 @@
     "systemSettings": "Settings",
     "profile": "Profile",
     "help": "Help",
-    "system": "System"
+    "system": "System",
+    "fleetBookings": "Fleet & Bookings",
+    "finance": "Finance",
+    "operations": "Operations",
+    "organization": "Organization",
+    "analytics": "Analytics"
   },
   "dashboard": {
     "title": "Dashboard",

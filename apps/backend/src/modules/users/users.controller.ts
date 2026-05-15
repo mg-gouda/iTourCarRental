@@ -156,7 +156,7 @@ export class UsersController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(
     @CurrentUser() user: SessionUserDto,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: { mimetype: string; originalname: string; buffer: Buffer; size: number } | undefined,
   ) {
     // Stub: in production, upload to S3 and return the key
     if (!file) {
