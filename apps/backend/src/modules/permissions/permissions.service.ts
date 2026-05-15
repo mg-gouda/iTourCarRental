@@ -4,7 +4,8 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { Role, ALL_PERMISSIONS, ROLE_DEFAULTS, buildEffectivePermissions } from '@car-rental/permissions';
+import { ALL_PERMISSIONS, ROLE_DEFAULTS, buildEffectivePermissions } from '@car-rental/permissions';
+import { Role } from '@car-rental/shared-types';
 
 @Injectable()
 export class PermissionsService {

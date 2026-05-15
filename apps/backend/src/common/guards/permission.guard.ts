@@ -7,8 +7,8 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { PERMISSION_KEY, BRANCH_SCOPED_KEY } from '../decorators';
-import { canDo, isInBranchScope } from '@car-rental/permissions';
-import { SessionUserDto } from '@car-rental/shared-types';
+import { isInBranchScope } from '@car-rental/permissions';
+import { SessionUserDto, Role } from '@car-rental/shared-types';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -35,21 +35,10 @@ export class PermissionGuard implements CanActivate {
     }
 
     if (requiredPermission) {
-      const overrides = user.permissions.map((p) => ({
-        key: p,
-        effect: 'grant' as const,
-      }));
-
-      // We use the pre-built permissions array on sessionUser for speed.
-      // canDo with the full override set built from the effective permissions list.
-      const allowed = canDo(
-        {
-          role: user.role,
-          overrides,
-          branchScope: user.branchScope,
-        },
-        requiredPermission,
-      );
+      // The session user already carries the full effective permission set.
+      // SUPER_ADMIN always passes; others must have the key in their permission set.
+      const isSuperAdmin = user.role === Role.SUPER_ADMIN;
+      const allowed = isSuperAdmin || user.permissions.includes(requiredPermission);
 
       if (!allowed) {
         throw new ForbiddenException(

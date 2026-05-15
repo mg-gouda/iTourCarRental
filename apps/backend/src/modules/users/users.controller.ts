@@ -12,7 +12,6 @@ import {
   UseInterceptors,
   ParseIntPipe,
   DefaultValuePipe,
-  Optional,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
@@ -23,14 +22,7 @@ import { AuthGuard } from '../../common/guards/auth.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { CurrentUser, RequirePermission } from '../../common/decorators';
 import { SessionUserDto, Role } from '@car-rental/shared-types';
-import {
-  IsBoolean,
-  IsEnum,
-  IsObject,
-  IsOptional,
-  IsString,
-} from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsObject, IsOptional, IsString } from 'class-validator';
 
 class UpdateProfileDto {
   @IsOptional()

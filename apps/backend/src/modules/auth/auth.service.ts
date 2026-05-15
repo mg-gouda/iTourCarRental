@@ -8,7 +8,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { Verify2faDto } from './dto/verify-2fa.dto';
 import { buildEffectivePermissions } from '@car-rental/permissions';
-import { SessionUserDto } from '@car-rental/shared-types';
+import { SessionUserDto, Role } from '@car-rental/shared-types';
 import * as argon2 from 'argon2';
 import { authenticator } from 'otplib';
 import { v4 as uuidv4 } from 'uuid';
@@ -47,7 +47,7 @@ function buildSessionUser(
   overrides: Array<{ key: string; effect: 'grant' | 'revoke' }>,
 ): SessionUserDto {
   const effectivePermissions = buildEffectivePermissions({
-    role: user.role as import('@car-rental/shared-types').Role,
+    role: user.role as Role,
     overrides,
     branchScope: user.branchScope,
   });
@@ -56,7 +56,7 @@ function buildSessionUser(
     id: user.id,
     email: user.email,
     fullName: user.fullName,
-    role: user.role as import('@car-rental/shared-types').Role,
+    role: user.role as Role,
     branchScope: user.branchScope,
     isActive: user.isActive,
     twoFactorEnabled: user.twoFactorEnabled,
