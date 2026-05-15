@@ -312,15 +312,16 @@ model Customer {
 }
 
 model DriverLicense {
-  id                 String    @id @default(cuid())
+  id                 String           @id @default(cuid())
   customerId         String?
-  customer           Customer? @relation(fields: [customerId], references: [id])
+  customer           Customer?        @relation(fields: [customerId], references: [id])
   additionalDriverId String?
+  additionalDriver   AdditionalDriver? @relation(fields: [additionalDriverId], references: [id], onDelete: Cascade)
   number             String
   expiryAt           DateTime
   photoKey           String?
   country            String?
-  createdAt          DateTime  @default(now())
+  createdAt          DateTime         @default(now())
 
   @@index([customerId])
   @@index([additionalDriverId])
@@ -342,11 +343,14 @@ model AdditionalDriver {
 model CorporateAccount {
   id                    String   @id @default(cuid())
   name                  String
-  contactName           String
-  contactEmail          String
+  contactName           String?
+  contactEmail          String?
   contactPhone          String?
-  billingAddress        String
-  taxId                 String?
+  billingAddress        String?
+  taxNumber             String?
+  creditLimit           Decimal? @db.Decimal(12, 2)
+  currency              String?
+  notes                 String?
   defaultRatePlanId     String?
   consolidatedInvoicing Boolean  @default(true)
   isActive              Boolean  @default(true)

@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/wsl/ubuntu/home/gouda/**)",
+      "Read(///wsl.localhost/ubuntu//**)",
+      "Read(///wsl.localhost/ubuntu/home/gouda/**)",
+      "Bash(mkdir -p apps packages/shared-types/src packages/permissions/src infra/postgres infra/nginx)",
+      "Bash(ls //wsl.localhost/ubuntu/home/gouda/iTourCarRental/packages/permissions/src/ //wsl.localhost/ubuntu/home/gouda/iTourCarRental/packages/shared-types/src/ 2>&1)",
+      "Bash(git remote *)",
+      "Bash(cat)",
+      "Read(///wsl.localhost/ubuntu/home/gouda/iTourCarRental/apps/frontend/**)",
+      "Read(///wsl.localhost/ubuntu/home/gouda/iTourCarRental/apps/backend/src/**)",
+      "Read(///wsl.localhost/ubuntu/home/gouda/iTourCarRental/apps/backend/src/modules/**)",
+      "Bash(echo \"=== Backend src ===\" && find //wsl.localhost/ubuntu/home/gouda/iTourCarRental/apps/backend/src -name \"*.ts\" | sort *)",
+      "Read(///wsl.localhost/ubuntu/home/gouda/iTourCarRental/apps/backend/**)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(docker compose *)"
+    ]
+  }
+}

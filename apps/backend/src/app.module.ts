@@ -20,6 +20,12 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { StylingModule } from './modules/styling/styling.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { LookupModule } from './modules/lookup/lookup.module';
+import { CarsModule } from './modules/cars/cars.module';
+import { InsuranceModule } from './modules/insurance/insurance.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { CorporateAccountsModule } from './modules/corporate-accounts/corporate-accounts.module';
+import { RatePlansModule } from './modules/rate-plans/rate-plans.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
 
 @Module({
   imports: [
@@ -45,6 +51,12 @@ import { LookupModule } from './modules/lookup/lookup.module';
     StylingModule,
     SettingsModule,
     LookupModule,
+    CarsModule,
+    InsuranceModule,
+    CustomersModule,
+    CorporateAccountsModule,
+    RatePlansModule,
+    BookingsModule,
   ],
   providers: [
     // Global guards — run on every route

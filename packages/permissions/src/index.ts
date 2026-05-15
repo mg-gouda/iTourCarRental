@@ -1,13 +1,9 @@
 import { Role } from '@car-rental/shared-types';
-import { ROLE_DEFAULTS } from './role-defaults';
+import { ROLE_DEFAULTS, ALL_PERMISSIONS } from './role-defaults';
 
 export { ROLE_DEFAULTS, ALL_PERMISSIONS } from './role-defaults';
 export type { PermissionOverride } from './types';
-
-export interface PermissionOverride {
-  key: string;
-  effect: 'grant' | 'revoke';
-}
+import type { PermissionOverride } from './types';
 
 export interface CanDoUser {
   role: Role;
@@ -38,7 +34,6 @@ export function canDo(user: CanDoUser, key: string): boolean {
  */
 export function buildEffectivePermissions(user: CanDoUser): Set<string> {
   if (user.role === Role.SUPER_ADMIN) {
-    const { ALL_PERMISSIONS } = require('./role-defaults');
     return new Set(ALL_PERMISSIONS);
   }
 

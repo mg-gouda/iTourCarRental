@@ -5,11 +5,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_KEY } from '../decorators';
 import { buildEffectivePermissions } from '@car-rental/permissions';
-import { SessionUserDto } from '@car-rental/shared-types';
+import { SessionUserDto, Role } from '@car-rental/shared-types';
 import * as crypto from 'crypto';
 
 function hashCookieValue(value: string): string {
@@ -75,7 +75,7 @@ export class AuthGuard implements CanActivate {
     }));
 
     const effectivePermissions = buildEffectivePermissions({
-      role: user.role,
+      role: user.role as Role,
       overrides,
       branchScope: user.branchScope,
     });
@@ -84,7 +84,7 @@ export class AuthGuard implements CanActivate {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
-      role: user.role,
+      role: user.role as Role,
       branchScope: user.branchScope,
       isActive: user.isActive,
       twoFactorEnabled: user.twoFactorEnabled,
