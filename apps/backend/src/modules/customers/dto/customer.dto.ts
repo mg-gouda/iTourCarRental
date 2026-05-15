@@ -1,6 +1,6 @@
 import {
   IsString, IsOptional, IsEmail, IsDateString, IsEnum,
-  IsArray, ValidateNested, MinLength,
+  IsArray, ValidateNested, MinLength, IsInt, Min, Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -18,9 +18,8 @@ export class DriverLicenseDto {
 
 export class AdditionalDriverDto {
   @IsString() @MinLength(1) fullName: string;
+  @IsInt() @Min(18) @Max(99) age: number;
   @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsString() nationality?: string;
-  @IsOptional() @IsDateString() dateOfBirth?: string;
   @IsOptional() @ValidateNested() @Type(() => DriverLicenseDto) license?: DriverLicenseDto;
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, PaginationState } from '@tanstack/react-table';
 import { Plus, Pencil, Trash2, ArrowLeftRight } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -123,7 +123,7 @@ export function CarsClient() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -131,8 +131,8 @@ export function CarsClient() {
   const [deleteTarget, setDeleteTarget] = useState<Car | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['cars', page, search, statusFilter],
-    queryFn: () => carsApi.list({ page, limit: 20, search: search || undefined, status: statusFilter || undefined }),
+    queryKey: ['cars', pagination, search, statusFilter],
+    queryFn: () => carsApi.list({ page: pagination.pageIndex + 1, limit: pagination.pageSize, search: search || undefined, status: statusFilter || undefined }),
     placeholderData: (prev) => prev,
   });
 
@@ -220,13 +220,13 @@ export function CarsClient() {
         <Input
           placeholder="Search make, model, plate, VIN…"
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => { setSearch(e.target.value); setPagination((p) => ({ ...p, pageIndex: 0 })); }}
           className="max-w-xs"
         />
         <Combobox
           options={statusOptions}
           value={statusFilter}
-          onChange={(v) => { setStatusFilter(v); setPage(1); }}
+          onValueChange={(v) => { setStatusFilter(v); setPagination((p) => ({ ...p, pageIndex: 0 })); }}
           placeholder="Filter by status"
           className="w-48"
         />
@@ -235,8 +235,10 @@ export function CarsClient() {
       <DataTable
         columns={columns}
         data={data?.items ?? []}
-        isLoading={isLoading}
-        pagination={{ page, pageCount: data?.pages ?? 1, onPageChange: setPage }}
+        loading={isLoading}
+        totalCount={data?.total}
+        pagination={pagination}
+        onPaginationChange={setPagination}
         emptyMessage="No cars found"
       />
 
@@ -292,7 +294,7 @@ export function CarsClient() {
                   <Combobox
                     options={categoryOptions}
                     value={field.value ?? ''}
-                    onChange={field.onChange}
+                    onValueChange={field.onChange}
                     placeholder="Select category"
                   />
                 )}
@@ -306,7 +308,7 @@ export function CarsClient() {
                   control={form.control}
                   name="transmission"
                   render={({ field }) => (
-                    <Combobox options={transmissionOptions} value={field.value ?? ''} onChange={field.onChange} placeholder="Select" />
+                    <Combobox options={transmissionOptions} value={field.value ?? ''} onValueChange={field.onChange} placeholder="Select" />
                   )}
                 />
               </div>
@@ -316,7 +318,7 @@ export function CarsClient() {
                   control={form.control}
                   name="fuelType"
                   render={({ field }) => (
-                    <Combobox options={fuelOptions} value={field.value ?? ''} onChange={field.onChange} placeholder="Select" />
+                    <Combobox options={fuelOptions} value={field.value ?? ''} onValueChange={field.onChange} placeholder="Select" />
                   )}
                 />
               </div>
@@ -351,7 +353,7 @@ export function CarsClient() {
                     <Combobox
                       options={Object.entries(STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))}
                       value={field.value ?? ''}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       placeholder="Select status"
                     />
                   )}

@@ -7,7 +7,7 @@ import { Plus, MoreHorizontal, Pencil, Trash2, ToggleLeft, ToggleRight } from 'l
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { branchesApi, Branch, CreateBranchDto } from '@/lib/api';
+import { branchesApi, Branch, CreateBranchDto, UpdateBranchDto } from '@/lib/api';
 import { DataTable } from '@/components/ui/data-table/data-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -185,7 +185,7 @@ export function BranchesClient() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: Partial<Branch> }) => branchesApi.update(id, dto),
+    mutationFn: ({ id, dto }: { id: string; dto: UpdateBranchDto }) => branchesApi.update(id, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches'] });
       setSheetOpen(false);
@@ -322,7 +322,17 @@ export function BranchesClient() {
           </SheetHeader>
           <div className="mt-6">
             <BranchForm
-              defaultValues={editTarget ?? undefined}
+              defaultValues={editTarget ? {
+                name: editTarget.name,
+                code: editTarget.code,
+                city: editTarget.city,
+                country: editTarget.country,
+                address: editTarget.address ?? undefined,
+                phone: editTarget.phone ?? undefined,
+                email: editTarget.email ?? undefined,
+                currency: editTarget.currency,
+                timezone: editTarget.timezone,
+              } : undefined}
               onSubmit={handleFormSubmit}
               isPending={isPending}
             />

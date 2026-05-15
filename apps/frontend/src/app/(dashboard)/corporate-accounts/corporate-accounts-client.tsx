@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, PaginationState } from '@tanstack/react-table';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -86,15 +86,15 @@ function useColumns(onEdit: (a: CorporateAccount) => void, onDelete: (a: Corpora
 export function CorporateAccountsClient() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editAccount, setEditAccount] = useState<CorporateAccount | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CorporateAccount | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['corporate-accounts', page, search],
-    queryFn: () => corporateAccountsApi.list({ page, limit: 20, search: search || undefined }),
+    queryKey: ['corporate-accounts', pagination, search],
+    queryFn: () => corporateAccountsApi.list({ page: pagination.pageIndex + 1, limit: pagination.pageSize, search: search || undefined }),
     placeholderData: (prev) => prev,
   });
 
@@ -167,7 +167,7 @@ export function CorporateAccountsClient() {
         <Input
           placeholder="Search company, contact, TRN…"
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => { setSearch(e.target.value); setPagination((p) => ({ ...p, pageIndex: 0 })); }}
           className="max-w-xs"
         />
       </div>
@@ -175,8 +175,10 @@ export function CorporateAccountsClient() {
       <DataTable
         columns={columns}
         data={data?.items ?? []}
-        isLoading={isLoading}
-        pagination={{ page, pageCount: data?.pages ?? 1, onPageChange: setPage }}
+        loading={isLoading}
+        totalCount={data?.total}
+        pagination={pagination}
+        onPaginationChange={setPagination}
         emptyMessage="No corporate accounts found"
       />
 

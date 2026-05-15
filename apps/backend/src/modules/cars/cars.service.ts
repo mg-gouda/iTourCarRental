@@ -131,7 +131,7 @@ export class CarsService {
   async delete(id: string) {
     await this.findOneOrThrow(id);
     const active = await this.prisma.booking.count({
-      where: { carId: id, deletedAt: null, status: { in: ['HOLD', 'CONFIRMED', 'CHECKED_OUT'] } },
+      where: { carId: id, deletedAt: null, status: { in: ['HOLD', 'CONFIRMED', 'ACTIVE'] } },
     });
     if (active > 0) throw new ConflictException('Car has active bookings');
     return this.prisma.car.update({ where: { id }, data: { deletedAt: new Date() } });

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ColumnDef } from '@tanstack/react-table';
+import { ColumnDef, PaginationState } from '@tanstack/react-table';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -116,7 +116,7 @@ export function CustomersClient() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [search, setSearch] = useState('');
   const [flagFilter, setFlagFilter] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -124,8 +124,8 @@ export function CustomersClient() {
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['customers', page, search, flagFilter],
-    queryFn: () => customersApi.list({ page, limit: 20, search: search || undefined, flag: flagFilter || undefined }),
+    queryKey: ['customers', pagination, search, flagFilter],
+    queryFn: () => customersApi.list({ page: pagination.pageIndex + 1, limit: pagination.pageSize, search: search || undefined, flag: flagFilter || undefined }),
     placeholderData: (prev) => prev,
   });
 
@@ -225,13 +225,13 @@ export function CustomersClient() {
         <Input
           placeholder="Search name, email, phone…"
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => { setSearch(e.target.value); setPagination((p) => ({ ...p, pageIndex: 0 })); }}
           className="max-w-xs"
         />
         <Combobox
           options={flagOptions}
           value={flagFilter}
-          onChange={(v) => { setFlagFilter(v); setPage(1); }}
+          onValueChange={(v) => { setFlagFilter(v); setPagination((p) => ({ ...p, pageIndex: 0 })); }}
           placeholder="Filter by flag"
           className="w-44"
         />
@@ -240,8 +240,10 @@ export function CustomersClient() {
       <DataTable
         columns={columns}
         data={data?.items ?? []}
-        isLoading={isLoading}
-        pagination={{ page, pageCount: data?.pages ?? 1, onPageChange: setPage }}
+        loading={isLoading}
+        totalCount={data?.total}
+        pagination={pagination}
+        onPaginationChange={setPagination}
         emptyMessage="No customers found"
       />
 
@@ -291,7 +293,7 @@ export function CustomersClient() {
                       control={form.control}
                       name="source"
                       render={({ field }) => (
-                        <Combobox options={sourceOptions} value={field.value ?? ''} onChange={field.onChange} placeholder="Select" />
+                        <Combobox options={sourceOptions} value={field.value ?? ''} onValueChange={field.onChange} placeholder="Select" />
                       )}
                     />
                   </div>
@@ -304,7 +306,7 @@ export function CustomersClient() {
                         <Combobox
                           options={[{ value: '', label: 'None' }, { value: 'VIP', label: 'VIP' }, { value: 'WATCHLIST', label: 'Watchlist' }, { value: 'BLACKLISTED', label: 'Blacklisted' }]}
                           value={field.value ?? ''}
-                          onChange={field.onChange}
+                          onValueChange={field.onChange}
                           placeholder="No flag"
                         />
                       )}
@@ -349,7 +351,7 @@ export function CustomersClient() {
                         control={form.control}
                         name="licenseType"
                         render={({ field }) => (
-                          <Combobox options={licenseTypeOptions} value={field.value ?? ''} onChange={field.onChange} placeholder="Type" />
+                          <Combobox options={licenseTypeOptions} value={field.value ?? ''} onValueChange={field.onChange} placeholder="Type" />
                         )}
                       />
                     </div>

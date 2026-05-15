@@ -205,3 +205,49 @@ pnpm dev:down
 
 **Commit:** 6830dca
 **PR:** https://github.com/mg-gouda/iTourCarRental/pull/1
+
+---
+
+## [2026-05-15] Phase 3 — Bookings & Pricing (Backend + Frontend)
+
+**Phase:** Phase 3 — Bookings & Pricing
+**Scope:** Full booking lifecycle backend (rate plans, pricing engine, state machine) + Bookings list + Create booking sheet + Calendar view
+
+**Files touched:**
+- `apps/backend/prisma/seed.ts` — Added: default extras (GPS, child seat, additional driver, basic/full insurance), Cairo Default rate plan with rules per category, branch pricing settings (young driver threshold, late return grace); booking overlap constraint (graceful fallback if btree_gist unavailable); fixed variable name conflict; fixed `ts-node` invocation path
+- `apps/backend/src/modules/rate-plans/` — New: `RatePlansModule`, `RatePlansService`, `RatePlansController`, `dto/rate-plan.dto.ts` — full CRUD for rate plans, rate rules, extras, extra prices
+- `apps/backend/src/modules/bookings/pricing.service.ts` — New: 11-step pricing engine per PRICING.md (rate plan resolution, base rental tiers with weekly/monthly, extras, cross-branch fee, mileage overage, late return, age surcharges, fuel charge, discounts, tax, rounding); uses `Prisma.Decimal` throughout
+- `apps/backend/src/modules/bookings/bookings.service.ts` — New: full booking state machine (HOLD→CONFIRMED→ACTIVE→COMPLETED + CANCELLED/NO_SHOW); quote(), list(), get(), create(), confirm(), cancel(), checkin(), checkout(), update(), delete(), calendar()
+- `apps/backend/src/modules/bookings/bookings.controller.ts` — New: all booking routes; fixed double-prefix (`api/v1/bookings` → `bookings`)
+- `apps/backend/src/modules/bookings/dto/booking.dto.ts` — New: CreateBookingDto, UpdateBookingDto, CancelBookingDto, CheckinDto, CheckoutDto, QuoteDto
+- `apps/backend/src/modules/bookings/bookings.module.ts` — New
+- `apps/backend/src/modules/lookup/lookup.controller.ts` — Extended: rate-plans, extras, available-cars lookup endpoints
+- `apps/backend/src/modules/cars/cars.service.ts` — Fixed: `CHECKED_OUT` → `ACTIVE` status
+- `apps/backend/src/modules/customers/customers.service.ts` — Fixed: `startAt/endAt` → `pickupAt/returnAt`, `expiryDate` → `expiryAt`, `licenseNumber` → `number`, `issuingCountry` → `country`, `CHECKED_OUT` → `ACTIVE`
+- `apps/backend/src/modules/customers/dto/customer.dto.ts` — Fixed: `AdditionalDriverDto` now has `age: number` (model field) not `dateOfBirth`
+- `apps/backend/src/modules/rate-plans/rate-plans.controller.ts` — Fixed: double-prefix (`api/v1` → ``)
+- `apps/frontend/src/lib/api.ts` — Extended: RatePlan, Extra, RateRule, Booking, PriceBreakdown, CalendarEntry types + ratePlansApi, bookingsApi helpers; extended lookupApi with ratePlans, extras, availableCars
+- `apps/frontend/src/app/(dashboard)/bookings/bookings-client.tsx` — New: DataTable with status badges + filters; multi-step Create Booking sheet (customer→car→dates→options→quote); inline Confirm/Cancel actions; QuotePreview component; CancelDialog
+- `apps/frontend/src/app/(dashboard)/bookings/page.tsx` — Updated stub to real page
+- `apps/frontend/src/app/(dashboard)/calendar/calendar-client.tsx` — New: weekly Gantt timeline grouped by car with hover tooltips, today highlight, week navigation
+- `apps/frontend/src/app/(dashboard)/calendar/page.tsx` — Updated stub to real page
+- `apps/frontend/src/app/(dashboard)/cars/cars-client.tsx` — Fixed: Combobox `onChange` → `onValueChange`; pagination refactored to `PaginationState`
+- `apps/frontend/src/app/(dashboard)/customers/customers-client.tsx` — Same fixes
+- `apps/frontend/src/app/(dashboard)/corporate-accounts/corporate-accounts-client.tsx` — Same pagination fixes
+- `apps/frontend/src/app/(dashboard)/branches/branches-client.tsx` — Fixed: imported `UpdateBranchDto`; null→undefined sanitization on `defaultValues`
+- `apps/frontend/src/app/(dashboard)/staff/staff-client.tsx` — Fixed: `fetchBranches` returns `AsyncOption[]` format
+- `apps/frontend/src/app/(dashboard)/system/permissions/permissions-client.tsx` — Fixed: `fetchUsers` returns `AsyncOption[]` format
+- `apps/frontend/src/lib/auth.ts` — Fixed: duplicate property spread in authorize()
+
+**Tests:** N/A
+**Migration:** No new Prisma migrations (seed adds data only)
+
+**Notes:**
+- Booking overlap exclusion constraint skipped in seed (PostgreSQL `tstzrange` IMMUTABLE issue in Docker env) — enforced at service layer with `ConflictException`
+- Pricing engine: all amounts in `Prisma.Decimal`, never float; serialized to strings in JSON snapshot
+- Create booking is a 3-step sheet: Step 1 (customer+car+dates+branches+driverAge) → Step 2 (fuelPolicy+mileage+notes) → Step 3 (quote preview + confirm)
+- Calendar groups bookings by car, 1-week window, Mon–Sun, forward/back navigation, today button
+- `DriverLicense` schema uses `number` (not `licenseNumber`), `country` (not `issuingCountry`), `expiryAt` (not `expiryDate`) — DTO field names differ from DB
+
+**Commit:** TBD
+**PR:** TBD

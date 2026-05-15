@@ -57,7 +57,7 @@ export class CustomersService {
           where: { deletedAt: null },
           orderBy: { createdAt: 'desc' },
           take: 10,
-          select: { id: true, status: true, startAt: true, endAt: true, createdAt: true },
+          select: { id: true, status: true, pickupAt: true, returnAt: true, createdAt: true },
         },
       },
     });
@@ -78,8 +78,10 @@ export class CustomersService {
         await tx.driverLicense.create({
           data: {
             customerId: customer.id,
-            ...primaryLicense,
-            expiryDate: new Date(primaryLicense.expiryDate),
+            number: primaryLicense.licenseNumber,
+            country: primaryLicense.issuingCountry,
+            expiryAt: new Date(primaryLicense.expiryDate),
+            photoKey: primaryLicense.storageKey,
           },
         });
       }
@@ -102,7 +104,7 @@ export class CustomersService {
   async delete(id: string) {
     await this.findOne(id);
     const active = await this.prisma.booking.count({
-      where: { customerId: id, deletedAt: null, status: { in: ['HOLD', 'CONFIRMED', 'CHECKED_OUT'] } },
+      where: { customerId: id, deletedAt: null, status: { in: ['HOLD', 'CONFIRMED', 'ACTIVE'] } },
     });
     if (active > 0) throw new ConflictException('Customer has active bookings');
     return this.prisma.customer.update({ where: { id }, data: { deletedAt: new Date() } });
@@ -113,7 +115,13 @@ export class CustomersService {
   async addLicense(customerId: string, dto: DriverLicenseDto) {
     await this.findOne(customerId);
     return this.prisma.driverLicense.create({
-      data: { customerId, ...dto, expiryDate: new Date(dto.expiryDate) },
+      data: {
+        customerId,
+        number: dto.licenseNumber,
+        country: dto.issuingCountry,
+        expiryAt: new Date(dto.expiryDate),
+        photoKey: dto.storageKey,
+      },
     });
   }
 
@@ -137,14 +145,21 @@ export class CustomersService {
     return this.prisma.$transaction(async (tx) => {
       const driver = await tx.additionalDriver.create({
         data: {
-          ...driverData,
           bookingId,
-          dateOfBirth: driverData.dateOfBirth ? new Date(driverData.dateOfBirth) : undefined,
+          fullName: driverData.fullName,
+          age: driverData.age ?? 25,
+          phone: driverData.phone,
         },
       });
       if (license) {
         await tx.driverLicense.create({
-          data: { additionalDriverId: driver.id, ...license, expiryDate: new Date(license.expiryDate) },
+          data: {
+            additionalDriverId: driver.id,
+            number: license.licenseNumber,
+            country: license.issuingCountry,
+            expiryAt: new Date(license.expiryDate),
+            photoKey: license.storageKey,
+          },
         });
       }
       return tx.additionalDriver.findUnique({ where: { id: driver.id }, include: { licenses: true } });

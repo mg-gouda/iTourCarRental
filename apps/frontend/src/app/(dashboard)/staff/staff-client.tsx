@@ -125,7 +125,10 @@ function StaffForm({
   });
 
   const fetchBranches = React.useCallback(
-    (q: string) => lookupApi.branches(q),
+    async (q: string) => {
+      const results = await lookupApi.branches(q);
+      return results.map((b) => ({ value: b.id, label: b.name, description: b.city }));
+    },
     [],
   );
 

@@ -223,6 +223,22 @@ export const lookupApi = {
     api.get<Array<{ id: string; name: string; description: string | null }>>(`/lookup/car-categories?q=${encodeURIComponent(q)}`),
   tags: (q: string) =>
     api.get<Array<{ id: string; name: string }>>(`/lookup/tags?q=${encodeURIComponent(q)}`),
+  ratePlans: (q: string, branchId?: string) => {
+    const params = new URLSearchParams({ q });
+    if (branchId) params.set('branchId', branchId);
+    return api.get<Array<{ id: string; name: string; branchId: string | null; startAt: string; endAt: string; priority: number }>>(`/lookup/rate-plans?${params}`);
+  },
+  extras: (q: string) =>
+    api.get<Array<{ id: string; code: string; name: string; pricingMode: string }>>(`/lookup/extras?q=${encodeURIComponent(q)}`),
+  availableCars: (params: { q?: string; pickupAt?: string; returnAt?: string; categoryId?: string; branchId?: string }) => {
+    const p = new URLSearchParams();
+    if (params.q) p.set('q', params.q);
+    if (params.pickupAt) p.set('pickupAt', params.pickupAt);
+    if (params.returnAt) p.set('returnAt', params.returnAt);
+    if (params.categoryId) p.set('categoryId', params.categoryId);
+    if (params.branchId) p.set('branchId', params.branchId);
+    return api.get<Array<{ id: string; make: string; model: string; year: number; licensePlate: string; category: { id: string; name: string }; homeBranch: { id: string; name: string } }>>(`/lookup/available-cars?${p}`);
+  },
 };
 
 // ─── Car types ───────────────────────────────────────────────────────────────
@@ -431,4 +447,239 @@ export const corporateAccountsApi = {
   create: (dto: CreateCorporateAccountDto) => api.post<CorporateAccount>('/corporate-accounts', dto),
   update: (id: string, dto: UpdateCorporateAccountDto) => api.patch<CorporateAccount>(`/corporate-accounts/${id}`, dto),
   delete: (id: string) => api.delete<void>(`/corporate-accounts/${id}`),
+};
+
+// ─── Rate plan types ──────────────────────────────────────────────────────────
+
+export type PricingMode = 'flat' | 'per_day' | 'per_use';
+
+export interface RateRule {
+  id: string;
+  categoryId: string;
+  category: { id: string; name: string };
+  dailyRate: string;
+  weeklyRate: string | null;
+  monthlyRate: string | null;
+  currency: string;
+}
+
+export interface RatePlan {
+  id: string;
+  name: string;
+  branchId: string | null;
+  branch: { id: string; name: string } | null;
+  corporateAccountId: string | null;
+  startAt: string;
+  endAt: string;
+  priority: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  rules: RateRule[];
+}
+
+export interface Extra {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  pricingMode: PricingMode;
+  isActive: boolean;
+}
+
+export interface CreateRatePlanDto {
+  name: string;
+  branchId?: string;
+  corporateAccountId?: string;
+  startAt: string;
+  endAt: string;
+  priority?: number;
+  isActive?: boolean;
+  rules?: { categoryId: string; dailyRate: string; weeklyRate?: string; monthlyRate?: string; currency?: string }[];
+}
+
+export type UpdateRatePlanDto = Partial<Omit<CreateRatePlanDto, 'rules'>>;
+
+export const ratePlansApi = {
+  list: (params?: { page?: number; limit?: number; branchId?: string; isActive?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.isActive !== undefined) q.set('isActive', String(params.isActive));
+    return api.get<PaginatedResponse<RatePlan>>(`/rate-plans?${q}`);
+  },
+  get: (id: string) => api.get<RatePlan>(`/rate-plans/${id}`),
+  create: (dto: CreateRatePlanDto) => api.post<RatePlan>('/rate-plans', dto),
+  update: (id: string, dto: UpdateRatePlanDto) => api.patch<RatePlan>(`/rate-plans/${id}`, dto),
+  delete: (id: string) => api.delete<void>(`/rate-plans/${id}`),
+  upsertRule: (id: string, dto: { categoryId: string; dailyRate: string; weeklyRate?: string; monthlyRate?: string; currency?: string }) =>
+    api.post<RateRule>(`/rate-plans/${id}/rules`, dto),
+  deleteRule: (id: string, categoryId: string) => api.delete<void>(`/rate-plans/${id}/rules/${categoryId}`),
+  listExtras: (params?: { isActive?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.isActive !== undefined) q.set('isActive', String(params.isActive));
+    return api.get<Extra[]>(`/extras?${q}`);
+  },
+  createExtra: (dto: { code: string; name: string; description?: string; pricingMode: PricingMode }) =>
+    api.post<Extra>('/extras', dto),
+  updateExtra: (id: string, dto: Partial<{ name: string; description: string; pricingMode: PricingMode; isActive: boolean }>) =>
+    api.patch<Extra>(`/extras/${id}`, dto),
+};
+
+// ─── Booking types ────────────────────────────────────────────────────────────
+
+export type BookingStatus = 'HOLD' | 'CONFIRMED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | 'OVERDUE';
+export type FuelPolicy = 'FULL_TO_FULL' | 'PREPAID_FULL' | 'RETURN_AS_RECEIVED';
+
+export interface PriceLineItem {
+  label: string;
+  amount: string;
+  currency: string;
+  isDiscount?: boolean;
+}
+
+export interface PriceBreakdown {
+  baseRental: string;
+  crossBranchFee: string;
+  extrasFee: string;
+  mileageOverage: string;
+  lateReturnFee: string;
+  youngDriverSurcharge: string;
+  additionalDriverSurcharge: string;
+  fuelCharge: string;
+  discounts: string;
+  subtotal: string;
+  taxAmount: string;
+  total: string;
+  currency: string;
+  days: number;
+  dailyRate: string;
+  items: PriceLineItem[];
+}
+
+export interface BookingExtra {
+  extraId: string;
+  extra: { id: string; name: string; code: string };
+  quantity: number;
+  unitPrice: string;
+  total: string;
+}
+
+export interface Booking {
+  id: string;
+  bookingNumber: string;
+  status: BookingStatus;
+  pickupAt: string;
+  returnAt: string;
+  actualReturnAt: string | null;
+  pickupMileage: number | null;
+  returnMileage: number | null;
+  pickupFuelLevel: number | null;
+  returnFuelLevel: number | null;
+  fuelPolicy: FuelPolicy;
+  mileageAllowancePerDay: number | null;
+  driverAge: number;
+  priceSnapshot: PriceBreakdown | null;
+  notes: string | null;
+  cancellationReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  car: { id: string; make: string; model: string; year: number; licensePlate: string; category: { id: string; name: string } };
+  customer: { id: string; fullName: string; email: string | null; phone: string; flag: string | null };
+  corporateAccount: { id: string; name: string } | null;
+  pickupBranch: { id: string; name: string };
+  returnBranch: { id: string; name: string };
+  ratePlan: { id: string; name: string } | null;
+  extras: BookingExtra[];
+  createdBy: { id: string; fullName: string } | null;
+}
+
+export interface CreateBookingDto {
+  carId: string;
+  customerId: string;
+  corporateAccountId?: string;
+  pickupBranchId: string;
+  returnBranchId: string;
+  pickupAt: string;
+  returnAt: string;
+  driverAge: number;
+  additionalDrivers?: { age: number }[];
+  extras?: { extraId: string; quantity: number }[];
+  fuelPolicy?: FuelPolicy;
+  mileageAllowancePerDay?: number;
+  promoCode?: string;
+  notes?: string;
+}
+
+export type UpdateBookingDto = Partial<Pick<CreateBookingDto, 'pickupAt' | 'returnAt' | 'fuelPolicy' | 'notes' | 'mileageAllowancePerDay'>>;
+
+export interface QuoteDto {
+  carId: string;
+  pickupBranchId: string;
+  returnBranchId: string;
+  pickupAt: string;
+  returnAt: string;
+  driverAge: number;
+  additionalDrivers?: { age: number }[];
+  extras?: { extraId: string; quantity: number }[];
+  fuelPolicy?: FuelPolicy;
+  mileageAllowancePerDay?: number;
+  corporateAccountId?: string;
+}
+
+export interface CheckinDto {
+  mileage: number;
+  fuelLevel: number;
+  notes?: string;
+  items?: { label: string; condition: string; notes?: string }[];
+}
+
+export interface CheckoutDto {
+  mileage: number;
+  fuelLevel: number;
+  notes?: string;
+  items?: { label: string; condition: string; notes?: string }[];
+}
+
+export interface CalendarEntry {
+  id: string;
+  bookingNumber: string;
+  status: BookingStatus;
+  pickupAt: string;
+  returnAt: string;
+  car: { id: string; make: string; model: string; year: number; licensePlate: string };
+  customer: { id: string; fullName: string };
+  pickupBranch: { id: string; name: string };
+  returnBranch: { id: string; name: string };
+}
+
+export const bookingsApi = {
+  list: (params?: { page?: number; limit?: number; search?: string; status?: string; carId?: string; customerId?: string; branchId?: string; from?: string; to?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.search) q.set('search', params.search);
+    if (params?.status) q.set('status', params.status);
+    if (params?.carId) q.set('carId', params.carId);
+    if (params?.customerId) q.set('customerId', params.customerId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    return api.get<PaginatedResponse<Booking>>(`/bookings?${q}`);
+  },
+  get: (id: string) => api.get<Booking>(`/bookings/${id}`),
+  quote: (dto: QuoteDto) => api.post<PriceBreakdown>('/bookings/quote', dto),
+  create: (dto: CreateBookingDto) => api.post<Booking>('/bookings', dto),
+  update: (id: string, dto: UpdateBookingDto) => api.patch<Booking>(`/bookings/${id}`, dto),
+  confirm: (id: string) => api.post<Booking>(`/bookings/${id}/confirm`),
+  cancel: (id: string, dto: { reason: string }) => api.post<Booking>(`/bookings/${id}/cancel`, dto),
+  checkin: (id: string, dto: CheckinDto) => api.post<Booking>(`/bookings/${id}/checkin`, dto),
+  checkout: (id: string, dto: CheckoutDto) => api.post<Booking>(`/bookings/${id}/checkout`, dto),
+  delete: (id: string) => api.delete<void>(`/bookings/${id}`),
+  calendar: (from: string, to: string, branchId?: string) => {
+    const q = new URLSearchParams({ from, to });
+    if (branchId) q.set('branchId', branchId);
+    return api.get<CalendarEntry[]>(`/bookings/calendar?${q}`);
+  },
 };

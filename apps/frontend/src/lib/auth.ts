@@ -22,10 +22,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const user = JSON.parse(_user) as SessionUserDto;
           return {
-            id: user.id,
-            email: user.email,
-            name: user.fullName,
             ...user,
+            name: user.fullName,
           };
         } catch {
           return null;

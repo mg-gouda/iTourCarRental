@@ -154,7 +154,10 @@ function UserOverridesTab() {
   const [addKey, setAddKey] = React.useState('');
   const [addEffect, setAddEffect] = React.useState<'grant' | 'revoke'>('grant');
 
-  const fetchUsers = React.useCallback((q: string) => lookupApi.users(q), []);
+  const fetchUsers = React.useCallback(async (q: string) => {
+    const results = await lookupApi.users(q);
+    return results.map((u) => ({ value: u.id, label: u.fullName, description: u.email ?? undefined }));
+  }, []);
 
   const { data: overrides, isLoading } = useQuery({
     queryKey: ['permissions', 'user-overrides', selectedUserId],

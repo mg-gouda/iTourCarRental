@@ -120,4 +120,77 @@ export class LookupController {
       orderBy: { name: 'asc' },
     });
   }
+
+  @Get('rate-plans')
+  async ratePlans(@Query('q') q = '', @Query('branchId') branchId?: string, @Query('limit') limit = 20) {
+    return this.prisma.ratePlan.findMany({
+      where: {
+        isActive: true,
+        ...(branchId ? { branchId } : {}),
+        ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
+      },
+      select: { id: true, name: true, branchId: true, startAt: true, endAt: true, priority: true },
+      take: Math.min(Number(limit), 100),
+      orderBy: [{ priority: 'desc' }, { name: 'asc' }],
+    });
+  }
+
+  @Get('extras')
+  async extras(@Query('q') q = '') {
+    return this.prisma.extra.findMany({
+      where: {
+        isActive: true,
+        ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
+      },
+      select: { id: true, code: true, name: true, pricingMode: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  @Get('available-cars')
+  async availableCars(
+    @Query('q') q = '',
+    @Query('pickupAt') pickupAt?: string,
+    @Query('returnAt') returnAt?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('branchId') branchId?: string,
+    @Query('limit') limit = 20,
+  ) {
+    // Cars that have no overlapping active/confirmed/hold booking in the window
+    const busyCarIds = pickupAt && returnAt
+      ? (await this.prisma.booking.findMany({
+          where: {
+            deletedAt: null,
+            status: { in: ['HOLD', 'CONFIRMED', 'ACTIVE'] },
+            pickupAt: { lt: new Date(returnAt) },
+            returnAt: { gt: new Date(pickupAt) },
+          },
+          select: { carId: true },
+        })).map((b) => b.carId)
+      : [];
+
+    return this.prisma.car.findMany({
+      where: {
+        deletedAt: null,
+        status: 'AVAILABLE',
+        id: busyCarIds.length > 0 ? { notIn: busyCarIds } : undefined,
+        ...(categoryId ? { categoryId } : {}),
+        ...(branchId ? { homeBranchId: branchId } : {}),
+        ...(q ? {
+          OR: [
+            { make: { contains: q, mode: 'insensitive' } },
+            { model: { contains: q, mode: 'insensitive' } },
+            { licensePlate: { contains: q, mode: 'insensitive' } },
+          ],
+        } : {}),
+      },
+      select: {
+        id: true, make: true, model: true, year: true, licensePlate: true,
+        category: { select: { id: true, name: true } },
+        homeBranch: { select: { id: true, name: true } },
+      },
+      take: Math.min(Number(limit), 100),
+      orderBy: [{ make: 'asc' }, { model: 'asc' }],
+    });
+  }
 }
