@@ -8,6 +8,17 @@ import { Prisma } from '@prisma/client';
 export class InsuranceService {
   constructor(private prisma: PrismaService) {}
 
+  async listAll(carId?: string) {
+    return this.prisma.insurancePolicy.findMany({
+      where: { deletedAt: null, ...(carId ? { carId } : {}) },
+      include: {
+        car: { select: { id: true, make: true, model: true, licensePlate: true } },
+        claims: { select: { id: true, status: true, amount: true, filedAt: true } },
+      },
+      orderBy: { expiryAt: 'desc' },
+    });
+  }
+
   async listPolicies(carId: string) {
     return this.prisma.insurancePolicy.findMany({
       where: { carId, deletedAt: null },

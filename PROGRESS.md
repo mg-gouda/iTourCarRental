@@ -489,3 +489,33 @@ pnpm dev:down
 
 **Commit:** d8d8cdd
 **PR:** https://github.com/mg-gouda/iTourCarRental/pull/5
+
+---
+
+## [2026-05-16 17:00] V1 Final — Insurance page + Styling & Branding page
+
+**Phase:** V1 completion pass
+**Scope:** The last two stub pages: /insurance and /system/styling — both now fully implemented
+
+**Files touched:**
+- `apps/backend/src/modules/insurance/insurance.service.ts` — Added listAll(carId?) with car + claims include
+- `apps/backend/src/modules/insurance/insurance.controller.ts` — Added GET /insurance/policies (global list, optional ?carId filter); added Query import
+- `apps/frontend/src/lib/api.ts` — Added InsuranceClaim interface; extended InsurancePolicy with car + claims fields; updated insuranceApi.listAll; added StylingProfile interface + stylingApi (get, update)
+- `apps/frontend/src/app/(dashboard)/insurance/insurance-client.tsx` — New: DataTable with all policies across fleet; KPI strip (active/expiring/expired counts); car filter via AsyncCombobox; create/edit Sheet; delete Dialog; StatusBadge (active=green, expiring-soon=yellow, expired=red)
+- `apps/frontend/src/app/(dashboard)/insurance/page.tsx` — Updated stub to real page
+- `apps/frontend/src/app/(dashboard)/system/styling/styling-client.tsx` — New: live theme editor with HSL color pickers (native color input + text field); token groups (Brand, Semantic, Surfaces, Sidebar, Borders); light/dark mode tabs; border-radius quick-select buttons; sticky live preview panel showing sidebar, card, buttons, badges, input — all driven by CSS custom properties; saves via PATCH /styling
+- `apps/frontend/src/app/(dashboard)/system/styling/page.tsx` — Updated stub to real page
+
+**Tests:** N/A
+**Migration:** No new migrations
+
+**Notes:**
+- Insurance is car-scoped in the DB but the frontend page shows all policies fleet-wide with optional car filter
+- GET /insurance/policies is placed BEFORE GET /insurance/policies/:id in the controller to avoid NestJS route precedence issues
+- Styling tokens stored as Record<string,string> in DB; keys are CSS variable names without the -- prefix (e.g. "primary" → stored as "221 83% 53%")
+- Live preview uses inline style object with CSS custom properties set directly on the preview div — no DOM injection or style tags needed
+- hslToHex / hexToHsl conversion utilities included inline in styling-client; small floating-point rounding is acceptable for color pickers
+- Theme changes require page refresh to propagate to the actual app — the CLAUDE.md spec says changes propagate via CSS variables; the theme loader (lib/theme.ts) applies them on load
+
+**Commit:** TBD
+**PR:** TBD

@@ -1,14 +1,8 @@
 import type { Metadata } from 'next';
+import { StylingClient } from './styling-client';
 
 export const metadata: Metadata = { title: 'Styling & Branding' };
 
 export default function Page() {
-  return (
-    <div className="space-y-4 animate-fade-in">
-      <h1 className="text-2xl font-semibold text-foreground">Styling & Branding</h1>
-      <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground text-sm">
-        This section is under construction — coming in Phase 1 implementation.
-      </div>
-    </div>
-  );
+  return <StylingClient />;
 }

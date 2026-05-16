@@ -353,9 +353,17 @@ export const carsApi = {
 
 // ─── Insurance types ─────────────────────────────────────────────────────────
 
+export interface InsuranceClaim {
+  id: string;
+  status: string;
+  amount: string | null;
+  filedAt: string;
+}
+
 export interface InsurancePolicy {
   id: string;
   carId: string;
+  car: { id: string; make: string; model: string; licensePlate: string };
   provider: string;
   policyNumber: string;
   coverage: string;
@@ -366,15 +374,36 @@ export interface InsurancePolicy {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  claims: InsuranceClaim[];
 }
 
 export const insuranceApi = {
+  listAll: (carId?: string) =>
+    api.get<InsurancePolicy[]>(`/insurance/policies${carId ? `?carId=${encodeURIComponent(carId)}` : ''}`),
   listPolicies: (carId: string) => api.get<InsurancePolicy[]>(`/insurance/cars/${carId}/policies`),
   createPolicy: (dto: { carId: string; provider: string; policyNumber: string; coverage: string; startAt: string; expiryAt: string; premium?: string; currency?: string; notes?: string }) =>
     api.post<InsurancePolicy>('/insurance/policies', dto),
-  updatePolicy: (id: string, dto: Partial<Omit<InsurancePolicy, 'id' | 'carId' | 'createdAt' | 'updatedAt'>>) =>
+  updatePolicy: (id: string, dto: Partial<Omit<InsurancePolicy, 'id' | 'carId' | 'car' | 'claims' | 'createdAt' | 'updatedAt'>>) =>
     api.patch<InsurancePolicy>(`/insurance/policies/${id}`, dto),
   deletePolicy: (id: string) => api.delete<void>(`/insurance/policies/${id}`),
+};
+
+// ─── Styling ──────────────────────────────────────────────────────────────────
+
+export interface StylingProfile {
+  id: string | null;
+  logoKey: string | null;
+  altLogoKey: string | null;
+  faviconKey: string | null;
+  tokens: Record<string, string>;
+  darkTokens: Record<string, string>;
+  updatedAt: string | null;
+}
+
+export const stylingApi = {
+  get: () => api.get<StylingProfile>('/styling'),
+  update: (dto: { tokens?: Record<string, string>; darkTokens?: Record<string, string>; logoKey?: string | null; altLogoKey?: string | null; faviconKey?: string | null }) =>
+    api.patch<StylingProfile>('/styling', dto),
 };
 
 // ─── Customer types ───────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { InsuranceService } from './insurance.service';
 import { CreateInsurancePolicyDto, UpdateInsurancePolicyDto, CreateInsuranceClaimDto } from './dto/insurance.dto';
 import { AuthGuard } from '../../common/guards/auth.guard';
@@ -9,6 +9,12 @@ import { RequirePermission } from '../../common/decorators';
 @UseGuards(AuthGuard, PermissionGuard)
 export class InsuranceController {
   constructor(private readonly service: InsuranceService) {}
+
+  @Get('policies')
+  @RequirePermission('insurance.view')
+  listAll(@Query('carId') carId?: string) {
+    return this.service.listAll(carId);
+  }
 
   @Get('cars/:carId/policies')
   @RequirePermission('insurance.view')
