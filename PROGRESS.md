@@ -337,5 +337,5 @@ pnpm dev:down
 - lookupApi.vendors and lookupApi.parts return `{ id, name, specialty? }` and `{ id, sku, name, unitCost, currency }` respectively
 - TypeScript: 0 errors after fixing `Omit<CreateAccidentDto, 'carId'>` spread issue in accidents-client
 
-**Commit:** TBD
-**PR:** TBD
+**Commit:** 4d1241d
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/4
