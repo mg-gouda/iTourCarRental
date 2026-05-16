@@ -169,6 +169,36 @@ export class LookupController {
     });
   }
 
+  @Get('vendors')
+  async vendors(@Query('q') q = '', @Query('limit') limit = 20) {
+    return this.prisma.maintenanceVendor.findMany({
+      where: {
+        deletedAt: null, isActive: true,
+        ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
+      },
+      select: { id: true, name: true, specialty: true },
+      take: Math.min(Number(limit), 100),
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  @Get('parts')
+  async parts(@Query('q') q = '', @Query('limit') limit = 20) {
+    return this.prisma.part.findMany({
+      where: {
+        ...(q ? {
+          OR: [
+            { sku: { contains: q, mode: 'insensitive' } },
+            { name: { contains: q, mode: 'insensitive' } },
+          ],
+        } : {}),
+      },
+      select: { id: true, sku: true, name: true, unitCost: true, currency: true },
+      take: Math.min(Number(limit), 100),
+      orderBy: { name: 'asc' },
+    });
+  }
+
   @Get('available-cars')
   async availableCars(
     @Query('q') q = '',

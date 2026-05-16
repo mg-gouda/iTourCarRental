@@ -30,6 +30,10 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { DamageFinesModule } from './modules/damage-fines/damage-fines.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { VendorsModule } from './modules/vendors/vendors.module';
+import { PartsModule } from './modules/parts/parts.module';
+import { AccidentsModule } from './modules/accidents/accidents.module';
 
 @Module({
   imports: [
@@ -65,6 +69,10 @@ import { DamageFinesModule } from './modules/damage-fines/damage-fines.module';
     InvoicesModule,
     RefundsModule,
     DamageFinesModule,
+    MaintenanceModule,
+    VendorsModule,
+    PartsModule,
+    AccidentsModule,
   ],
   providers: [
     // Global guards — run on every route

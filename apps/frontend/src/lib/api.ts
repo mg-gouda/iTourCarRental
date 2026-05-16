@@ -243,6 +243,14 @@ export const lookupApi = {
     api.get<Array<{ id: string; bookingNumber: string; customer: { id: string; fullName: string } }>>(
       `/lookup/bookings?q=${encodeURIComponent(q)}`,
     ),
+  vendors: (q: string) =>
+    api.get<Array<{ id: string; name: string; specialty: string | null }>>(
+      `/lookup/vendors?q=${encodeURIComponent(q)}`,
+    ),
+  parts: (q: string) =>
+    api.get<Array<{ id: string; sku: string; name: string; unitCost: string; currency: string }>>(
+      `/lookup/parts?q=${encodeURIComponent(q)}`,
+    ),
 };
 
 // ─── Car types ───────────────────────────────────────────────────────────────
@@ -917,3 +925,199 @@ export const damageFinesApi = {
     api.patch<Fine>(`/damage-fines/fines/${id}`, dto),
   deleteFine: (id: string) => api.delete<void>(`/damage-fines/fines/${id}`),
 };
+
+// ─── Maintenance types ────────────────────────────────────────────────────────
+
+export type MaintenanceKind = 'SCHEDULED' | 'UNSCHEDULED';
+
+export interface MaintenancePart {
+  id: string;
+  partId: string;
+  part: { id: string; sku: string; name: string };
+  quantity: number;
+  unitCost: string;
+}
+
+export interface MaintenanceRecord {
+  id: string;
+  kind: MaintenanceKind;
+  startedAt: string;
+  completedAt: string | null;
+  mileageAt: number;
+  cost: string;
+  currency: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  car: { id: string; make: string; model: string; year: number; licensePlate: string };
+  vendor: { id: string; name: string } | null;
+  partsUsed: MaintenancePart[];
+}
+
+export interface CreateMaintenanceDto {
+  carId: string;
+  kind: MaintenanceKind;
+  startedAt: string;
+  completedAt?: string;
+  mileageAt: number;
+  cost: string;
+  currency: string;
+  description: string;
+  vendorId?: string;
+  partsUsed?: { partId: string; quantity: number; unitCost: string }[];
+}
+
+export const maintenanceApi = {
+  list: (params?: { page?: number; limit?: number; carId?: string; kind?: string; vendorId?: string; from?: string; to?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.carId) q.set('carId', params.carId);
+    if (params?.kind) q.set('kind', params.kind);
+    if (params?.vendorId) q.set('vendorId', params.vendorId);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    return api.get<PaginatedResponse<MaintenanceRecord>>(`/maintenance?${q}`);
+  },
+  get: (id: string) => api.get<MaintenanceRecord>(`/maintenance/${id}`),
+  create: (dto: CreateMaintenanceDto) => api.post<MaintenanceRecord>('/maintenance', dto),
+  complete: (id: string, completedAt?: string) =>
+    api.post<MaintenanceRecord>(`/maintenance/${id}/complete`, { completedAt }),
+  update: (id: string, dto: Partial<CreateMaintenanceDto>) =>
+    api.patch<MaintenanceRecord>(`/maintenance/${id}`, dto),
+  delete: (id: string) => api.delete<void>(`/maintenance/${id}`),
+};
+
+// ─── Vendor types ─────────────────────────────────────────────────────────────
+
+export interface Vendor {
+  id: string;
+  name: string;
+  contact: string | null;
+  phone: string | null;
+  specialty: string | null;
+  warrantyTerms: string | null;
+  isActive: boolean;
+  createdAt: string;
+  _count: { maintenance: number };
+}
+
+export interface CreateVendorDto {
+  name: string;
+  contact?: string;
+  phone?: string;
+  specialty?: string;
+  warrantyTerms?: string;
+}
+
+export const vendorsApi = {
+  list: (params?: { page?: number; limit?: number; search?: string; active?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.search) q.set('search', params.search);
+    if (params?.active !== undefined) q.set('active', String(params.active));
+    return api.get<PaginatedResponse<Vendor>>(`/maintenance/vendors?${q}`);
+  },
+  get: (id: string) => api.get<Vendor>(`/maintenance/vendors/${id}`),
+  create: (dto: CreateVendorDto) => api.post<Vendor>('/maintenance/vendors', dto),
+  update: (id: string, dto: Partial<CreateVendorDto> & { isActive?: boolean }) =>
+    api.patch<Vendor>(`/maintenance/vendors/${id}`, dto),
+  delete: (id: string) => api.delete<void>(`/maintenance/vendors/${id}`),
+};
+
+// ─── Parts types ──────────────────────────────────────────────────────────────
+
+export interface PartStock {
+  id: string;
+  branchId: string;
+  quantity: number;
+  branch: { id: string; name: string };
+}
+
+export interface Part {
+  id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  unitCost: string;
+  currency: string;
+  lowStockThreshold: number;
+  stock: PartStock[];
+  totalStock: number;
+  isLowStock: boolean;
+}
+
+export interface CreatePartDto {
+  sku: string;
+  name: string;
+  description?: string;
+  unitCost: string;
+  currency: string;
+  lowStockThreshold?: number;
+}
+
+export const partsApi = {
+  list: (params?: { page?: number; limit?: number; search?: string; lowStock?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.search) q.set('search', params.search);
+    if (params?.lowStock) q.set('lowStock', 'true');
+    return api.get<PaginatedResponse<Part>>(`/parts?${q}`);
+  },
+  get: (id: string) => api.get<Part>(`/parts/${id}`),
+  create: (dto: CreatePartDto) => api.post<Part>('/parts', dto),
+  update: (id: string, dto: Partial<CreatePartDto>) => api.patch<Part>(`/parts/${id}`, dto),
+  adjustStock: (id: string, branchId: string, quantity: number) =>
+    api.post(`/parts/${id}/stock`, { branchId, quantity }),
+  delete: (id: string) => api.delete<void>(`/parts/${id}`),
+};
+
+// ─── Accident types ───────────────────────────────────────────────────────────
+
+export interface AccidentReport {
+  id: string;
+  occurredAt: string;
+  location: string | null;
+  policeReportRef: string | null;
+  description: string;
+  thirdPartyDetails: unknown;
+  insuranceClaimId: string | null;
+  createdAt: string;
+  car: { id: string; make: string; model: string; year: number; licensePlate: string };
+  booking: { id: string; bookingNumber: string; customer: { id: string; fullName: string } } | null;
+}
+
+export interface CreateAccidentDto {
+  carId: string;
+  bookingId?: string;
+  occurredAt: string;
+  location?: string;
+  policeReportRef?: string;
+  description: string;
+  thirdPartyDetails?: Record<string, unknown>;
+  insuranceClaimId?: string;
+}
+
+export const accidentsApi = {
+  list: (params?: { page?: number; limit?: number; carId?: string; from?: string; to?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.carId) q.set('carId', params.carId);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    return api.get<PaginatedResponse<AccidentReport>>(`/accidents?${q}`);
+  },
+  get: (id: string) => api.get<AccidentReport>(`/accidents/${id}`),
+  create: (dto: CreateAccidentDto) => api.post<AccidentReport>('/accidents', dto),
+  update: (id: string, dto: Partial<Omit<CreateAccidentDto, 'carId'>>) =>
+    api.patch<AccidentReport>(`/accidents/${id}`, dto),
+  delete: (id: string) => api.delete<void>(`/accidents/${id}`),
+};
+
+// ─── Lookup extensions ────────────────────────────────────────────────────────
+
+// lookupApi.vendors and lookupApi.parts added below via module augmentation approach:
+// These are accessed directly as lookupApi.vendors / lookupApi.parts in components

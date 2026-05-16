@@ -299,5 +299,43 @@ pnpm dev:down
 - `lookupApi.bookings` endpoint added: returns `{ id, bookingNumber, customer: { fullName } }` — used by payment/invoice/damage-fine async comboboxes
 - No PDF generation yet — stubbed as 501 Not Implemented in invoices service
 
+**Commit:** 69c5ab1
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/3
+
+---
+
+## [2026-05-16 00:00] Phase 5 — Maintenance & Operations
+
+**Phase:** 5
+**Scope:** Maintenance records, vendors, parts inventory, and accident reports — full backend + frontend
+
+**Files touched:**
+- `apps/backend/src/modules/maintenance/` — New: MaintenanceModule, MaintenanceService (create/list/get/complete/update/delete; car status transitions IN_MAINTENANCE↔AVAILABLE; parts stock decremented on create), MaintenanceController, dto/maintenance.dto.ts
+- `apps/backend/src/modules/vendors/` — New: VendorsModule, VendorsService (CRUD + soft delete), VendorsController at `maintenance/vendors`
+- `apps/backend/src/modules/parts/` — New: PartsModule, PartsService (CRUD + adjustStock upsert per branch; isLowStock annotation; prevents negative stock), PartsController at `parts`
+- `apps/backend/src/modules/accidents/` — New: AccidentsModule, AccidentsService (CRUD + soft delete; reportedById from session), AccidentsController at `accidents`
+- `apps/backend/src/modules/lookup/lookup.controller.ts` — Extended: `GET /lookup/vendors`, `GET /lookup/parts`
+- `apps/backend/src/app.module.ts` — Added MaintenanceModule, VendorsModule, PartsModule, AccidentsModule
+- `apps/frontend/src/lib/api.ts` — Extended: MaintenanceRecord, Vendor, Part, PartStock, AccidentReport types; maintenanceApi, vendorsApi, partsApi, accidentsApi; lookupApi.vendors, lookupApi.parts
+- `apps/frontend/src/app/(dashboard)/maintenance/maintenance-client.tsx` — New: DataTable + kind filter + Create sheet (car/vendor AsyncCombobox, parts useFieldArray) + Complete confirm dialog
+- `apps/frontend/src/app/(dashboard)/maintenance/page.tsx` — Updated stub
+- `apps/frontend/src/app/(dashboard)/maintenance/vendors/vendors-client.tsx` — New: DataTable + Create/Edit sheet + Delete confirm
+- `apps/frontend/src/app/(dashboard)/maintenance/vendors/page.tsx` — New
+- `apps/frontend/src/app/(dashboard)/parts/parts-client.tsx` — New: DataTable + low-stock filter + Create/Edit sheet + Adjust Stock dialog (per-branch) + Delete confirm
+- `apps/frontend/src/app/(dashboard)/parts/page.tsx` — Updated stub
+- `apps/frontend/src/app/(dashboard)/accidents/accidents-client.tsx` — New: DataTable + Report/Edit sheet (car AsyncCombobox disabled on edit, booking AsyncCombobox) + Delete confirm
+- `apps/frontend/src/app/(dashboard)/accidents/page.tsx` — Updated stub
+
+**Tests:** N/A
+**Migration:** No — all Phase 5 models (MaintenanceRecord, MaintenanceVendor, Part, PartStock, AccidentReport) already in Prisma schema
+
+**Notes:**
+- Maintenance create marks car `IN_MAINTENANCE`; complete marks car `AVAILABLE` — wrapped in `$transaction`
+- Parts stock adjustment uses upsert (branchId + partId unique); service rejects negative resulting stock
+- Vendors use `maintenanceVendor` Prisma model (not `vendor`); controller prefix is `maintenance/vendors`
+- Accidents: `reportedById` injected from session on the backend (`req.session.userId`)
+- lookupApi.vendors and lookupApi.parts return `{ id, name, specialty? }` and `{ id, sku, name, unitCost, currency }` respectively
+- TypeScript: 0 errors after fixing `Omit<CreateAccidentDto, 'carId'>` spread issue in accidents-client
+
 **Commit:** TBD
 **PR:** TBD
