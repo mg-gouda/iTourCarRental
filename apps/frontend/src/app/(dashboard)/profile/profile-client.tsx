@@ -365,15 +365,16 @@ function TwoFATab() {
             </Button>
           ) : (
             <>
-              {/* QR code placeholder — in prod render actual QR from otpauthUrl */}
               <div className="flex flex-col items-start gap-4">
                 <div className="rounded-md border p-4 bg-white">
                   <p className="text-xs text-center text-muted-foreground mb-2">
                     Scan this QR code in your authenticator app
                   </p>
-                  <div className="h-32 w-32 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
-                    QR Code
-                  </div>
+                  {setupMutation.data?.qrDataUrl ? (
+                    <img src={setupMutation.data.qrDataUrl} alt="2FA QR Code" className="h-32 w-32" />
+                  ) : (
+                    <div className="h-32 w-32 bg-muted rounded" />
+                  )}
                 </div>
                 <div className="space-y-1.5 w-full">
                   <Label>Manual entry key</Label>

@@ -409,5 +409,40 @@ pnpm dev:down
 - SavedView Prisma model and migration already in schema from Phase 1 — no new migration needed
 - API key: only the create response includes the plaintext `key` field; subsequent list/get never return it
 
-**Commit:** 676015b
+**Commit:** 676015b, 62c965d
 **PR:** TBD — push branch then: `gh pr create --base main --title "feat(p6): Phase 6 — Insights & Integrations"`
+
+---
+
+## [2026-05-16 14:00] V1 Completion — Profile, 2FA, Audit Log, Invoice PDF
+
+**Phase:** V1 completion pass
+**Scope:** Fill remaining stubs: profile backend (get/update/change-password/2FA TOTP/), audit log frontend, invoice PDF generation (pdfkit)
+
+**Files touched:**
+- `apps/backend/src/modules/profile/profile.service.ts` — New: getProfile (fresh from DB), updateProfile, changePassword (argon2 verify+hash), setup2fa (otplib generateSecret + QRCode.toDataURL), verify2fa (authenticator.verify + enable), disable2fa (password check + disable)
+- `apps/backend/src/modules/profile/profile.controller.ts` — New: GET /profile, PATCH /profile, POST /profile/change-password, POST /profile/2fa/setup, POST /profile/2fa/verify, DELETE /profile/2fa
+- `apps/backend/src/modules/profile/profile.module.ts` — New
+- `apps/backend/src/modules/profile/dto/profile.dto.ts` — New: UpdateProfileDto, ChangePasswordDto, Verify2faDto, Disable2faDto
+- `apps/backend/src/modules/invoices/invoice-pdf.service.ts` — New: InvoicePdfService.generateAndStream() — pdfkit A4 invoice with header, bill-to, dates, line items table, totals, footer
+- `apps/backend/src/modules/invoices/invoices.module.ts` — Updated: added InvoicePdfService provider
+- `apps/backend/src/modules/invoices/invoices.controller.ts` — Updated: GET /invoices/:id/pdf now streams PDF via pdfkit (was 501)
+- `apps/backend/src/app.module.ts` — Added ProfileModule
+- `apps/backend/package.json` — Added pdfkit + @types/pdfkit dependencies
+- `apps/frontend/src/lib/api.ts` — Updated: profileApi.me → GET /profile (fresh data); setup2fa response includes qrDataUrl; disable2fa sends body via RequestInit; added AuditLogEntry/AuditLogPage types + auditLogApi
+- `apps/frontend/src/app/(dashboard)/profile/profile-client.tsx` — Updated: QR code renders from qrDataUrl response instead of placeholder
+- `apps/frontend/src/app/(dashboard)/audit-log/audit-log-client.tsx` — New: paginated table, action/entity/date filters, expandable before/after diff rows
+- `apps/frontend/src/app/(dashboard)/audit-log/page.tsx` — Updated stub to real page
+
+**Tests:** N/A
+**Migration:** No — User model already has twoFactorSecret, twoFactorEnabled, language, themePreference
+
+**Notes:**
+- qrcode was already installed (used for admin 2FA setup); qrDataUrl is a base64 PNG data URL rendered in an <img> tag
+- pdfkit used with `require('pdfkit') as new(...) => any` pattern (no type generics needed) — @types/pdfkit added for IDE support but not required at runtime
+- Profile GET endpoint returns fresh DB data (not the JWT session snapshot) — more reliable for displaying current twoFactorEnabled state
+- DELETE /profile/2fa passes body via `RequestInit.body` — non-standard but works with NestJS @Body() decorator
+- Calendar view was already complete from Phase 3; no work needed
+
+**Commit:** TBD
+**PR:** TBD

@@ -186,14 +186,18 @@ export const usersApi = {
 };
 
 export const profileApi = {
-  me: () => api.get<User>('/auth/me'),
+  me: () => api.get<User>('/profile'),
   update: (dto: { fullName?: string; language?: string; themePreference?: string | null; notificationPrefs?: Record<string, unknown> }) =>
     api.patch<User>('/profile', dto),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post<void>('/profile/change-password', { currentPassword, newPassword }),
-  setup2fa: () => api.post<{ otpauthUrl: string; secret: string }>('/profile/2fa/setup'),
+  setup2fa: () => api.post<{ otpauthUrl: string; secret: string; qrDataUrl: string }>('/profile/2fa/setup'),
   verify2fa: (totpCode: string) => api.post<void>('/profile/2fa/verify', { totpCode }),
-  disable2fa: (currentPassword: string) => api.delete<void>('/profile/2fa'),
+  disable2fa: (currentPassword: string) =>
+    api.delete<void>('/profile/2fa', {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword }),
+    }),
   getSessions: () => api.get<Array<{ id: string; device: string | null; ip: string | null; userAgent: string | null; createdAt: string; lastActiveAt: string; isCurrent: boolean }>>('/auth/sessions'),
   revokeSession: (sessionId: string) => api.delete<void>(`/auth/sessions/${sessionId}`),
 };
@@ -1304,5 +1308,50 @@ export const importApi = {
     const form = new FormData();
     form.append('file', file);
     return api.postForm<ImportResult>('/import/customers', form);
+  },
+};
+
+// ─── Audit log types ────────────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  actor: { id: string; email: string; fullName: string; role: string } | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  before: unknown;
+  after: unknown;
+  ip: string | null;
+  userAgent: string | null;
+  occurredAt: string;
+}
+
+export interface AuditLogPage {
+  items: AuditLogEntry[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const auditLogApi = {
+  list: (params: {
+    page?: number;
+    limit?: number;
+    actorId?: string;
+    action?: string;
+    entityType?: string;
+    from?: string;
+    to?: string;
+  }) => {
+    const q = new URLSearchParams();
+    if (params.page) q.set('page', String(params.page));
+    if (params.limit) q.set('limit', String(params.limit));
+    if (params.actorId) q.set('actorId', params.actorId);
+    if (params.action) q.set('action', params.action);
+    if (params.entityType) q.set('entityType', params.entityType);
+    if (params.from) q.set('from', params.from);
+    if (params.to) q.set('to', params.to);
+    return api.get<AuditLogPage>(`/audit-log?${q}`);
   },
 };

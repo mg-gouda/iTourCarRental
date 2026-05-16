@@ -41,6 +41,7 @@ import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module';
 import { SavedViewsModule } from './modules/saved-views/saved-views.module';
 import { ImportModule } from './modules/import/import.module';
+import { ProfileModule } from './modules/profile/profile.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { ImportModule } from './modules/import/import.module';
     FeatureFlagsModule,
     SavedViewsModule,
     ImportModule,
+    ProfileModule,
   ],
   providers: [
     // Global guards — run on every route

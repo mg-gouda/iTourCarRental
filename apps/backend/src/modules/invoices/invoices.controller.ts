@@ -5,10 +5,13 @@ import {
   Body,
   Param,
   Query,
+  Res,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { InvoicesService } from './invoices.service';
+import { InvoicePdfService } from './invoice-pdf.service';
 import {
   GenerateInvoiceDto,
   VoidInvoiceDto,
@@ -18,7 +21,10 @@ import { RequirePermission } from '../../common/decorators';
 
 @Controller('invoices')
 export class InvoicesController {
-  constructor(private readonly svc: InvoicesService) {}
+  constructor(
+    private readonly svc: InvoicesService,
+    private readonly pdfSvc: InvoicePdfService,
+  ) {}
 
   @Get()
   @RequirePermission('invoices.view')
@@ -68,9 +74,7 @@ export class InvoicesController {
 
   @Get(':id/pdf')
   @RequirePermission('invoices.view')
-  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
-  // PDF generation via Puppeteer/pdfkit is planned — stub returns 501 until implemented
-  getPdf(@Param('id') _id: string) {
-    return { message: 'PDF generation is not yet implemented', status: 501 };
+  getPdf(@Param('id') id: string, @Res() res: Response) {
+    return this.pdfSvc.generateAndStream(id, res);
   }
 }
