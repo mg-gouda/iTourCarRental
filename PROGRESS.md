@@ -517,5 +517,5 @@ pnpm dev:down
 - hslToHex / hexToHsl conversion utilities included inline in styling-client; small floating-point rounding is acceptable for color pickers
 - Theme changes require page refresh to propagate to the actual app — the CLAUDE.md spec says changes propagate via CSS variables; the theme loader (lib/theme.ts) applies them on load
 
-**Commit:** TBD
-**PR:** TBD
+**Commit:** d355258
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/5
