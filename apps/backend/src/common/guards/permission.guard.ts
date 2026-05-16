@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { PERMISSION_KEY, BRANCH_SCOPED_KEY } from '../decorators';
 import { isInBranchScope } from '@car-rental/permissions';
 import { SessionUserDto, Role } from '@car-rental/shared-types';

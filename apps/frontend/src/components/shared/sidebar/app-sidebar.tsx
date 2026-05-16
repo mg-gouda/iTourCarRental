@@ -35,7 +35,7 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Fleet & Bookings',
+    label: 'fleetBookings',
     items: [
       { key: 'cars', href: '/cars', icon: Car, permission: 'cars.view' },
       { key: 'bookings', href: '/bookings', icon: BookOpen, permission: 'bookings.view' },
@@ -44,7 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Finance',
+    label: 'finance',
     items: [
       { key: 'payments', href: '/payments', icon: CreditCard, permission: 'payments.view' },
       { key: 'invoices', href: '/invoices', icon: FileText, permission: 'invoices.view' },
@@ -52,7 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Operations',
+    label: 'operations',
     items: [
       { key: 'maintenance', href: '/maintenance', icon: Wrench, permission: 'maintenance.view' },
       { key: 'vendors', href: '/maintenance/vendors', icon: Package, permission: 'maintenance.vendors.view' },
@@ -62,14 +62,14 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Organization',
+    label: 'organization',
     items: [
       { key: 'branches', href: '/branches', icon: GitBranch, permission: 'branches.view' },
       { key: 'staff', href: '/staff', icon: UserCog, permission: 'users.view' },
     ],
   },
   {
-    label: 'Analytics',
+    label: 'analytics',
     items: [
       { key: 'reports', href: '/reports', icon: BarChart3, permission: 'reports.view' },
       { key: 'auditLog', href: '/audit-log', icon: ClipboardList, permission: 'audit_log.view' },

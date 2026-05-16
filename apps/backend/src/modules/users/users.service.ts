@@ -150,7 +150,7 @@ export class UsersService {
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         ...(dto.language !== undefined && { language: dto.language }),
         ...(dto.themePreference !== undefined && { themePreference: dto.themePreference }),
-        ...(dto.notificationPrefs !== undefined && { notificationPrefs: dto.notificationPrefs }),
+        ...(dto.notificationPrefs !== undefined && { notificationPrefs: JSON.parse(JSON.stringify(dto.notificationPrefs)) }),
       },
     });
 
@@ -199,7 +199,7 @@ export class UsersService {
         ...(dto.fullName !== undefined && { fullName: dto.fullName }),
         ...(dto.language !== undefined && { language: dto.language }),
         ...(dto.themePreference !== undefined && { themePreference: dto.themePreference }),
-        ...(dto.notificationPrefs !== undefined && { notificationPrefs: dto.notificationPrefs }),
+        ...(dto.notificationPrefs !== undefined && { notificationPrefs: JSON.parse(JSON.stringify(dto.notificationPrefs)) }),
       },
     });
 

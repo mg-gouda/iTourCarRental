@@ -48,7 +48,7 @@ export class AuditLogService {
     ]);
 
     return {
-      items: entries.map((e) => ({
+      items: entries.map((e: any) => ({
         id: e.id,
         actor: e.actor
           ? {
