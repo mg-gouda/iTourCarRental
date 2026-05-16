@@ -487,5 +487,5 @@ pnpm dev:down
 - TagsPanel in cars-client calls useQueryClient() (needed for cache invalidation) — imported from @tanstack/react-query at file top
 - settingsApi uses PATCH (not PUT) to match backend @Patch(':key') controller decorator
 
-**Commit:** TBD
-**PR:** TBD
+**Commit:** d8d8cdd
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/5
