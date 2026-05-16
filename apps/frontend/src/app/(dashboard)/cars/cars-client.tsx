@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef, PaginationState } from '@tanstack/react-table';
-import { Plus, Pencil, Trash2, ArrowLeftRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowLeftRight, Upload } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import { carsApi, Car, CarStatus, CreateCarDto, UpdateCarDto } from '@/lib/api';
-import { DataTable } from '@/components/ui/data-table/data-table';
+import { DataTable, BulkAction } from '@/components/ui/data-table/data-table';
 import { AsyncCombobox } from '@/components/ui/combobox/async-combobox';
 import { Combobox } from '@/components/ui/combobox/combobox';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import { lookupApi } from '@/lib/api';
+import { CsvImportDialog } from '@/components/shared/csv-import/csv-import-dialog';
+import { SavedViewsToolbar } from '@/components/shared/saved-views/saved-views-toolbar';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -127,6 +129,7 @@ export function CarsClient() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editCar, setEditCar] = useState<Car | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Car | null>(null);
 
@@ -154,6 +157,37 @@ export function CarsClient() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['cars'] }); setSheetOpen(false); toast({ title: 'Car updated' }); },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => Promise.all(ids.map((id) => carsApi.delete(id))),
+    onSuccess: (_, ids) => { qc.invalidateQueries({ queryKey: ['cars'] }); toast({ title: `${ids.length} car(s) deleted` }); },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const bulkStatusMutation = useMutation({
+    mutationFn: ({ ids, status }: { ids: string[]; status: CarStatus }) =>
+      Promise.all(ids.map((id) => carsApi.update(id, { status }))),
+    onSuccess: (_, { ids }) => { qc.invalidateQueries({ queryKey: ['cars'] }); toast({ title: `${ids.length} car(s) updated` }); },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: 'Set Available',
+      variant: 'outline',
+      onClick: (ids) => bulkStatusMutation.mutate({ ids, status: 'AVAILABLE' }),
+    },
+    {
+      label: 'Set Out of Service',
+      variant: 'outline',
+      onClick: (ids) => bulkStatusMutation.mutate({ ids, status: 'OUT_OF_SERVICE' }),
+    },
+    {
+      label: 'Delete Selected',
+      variant: 'destructive',
+      onClick: (ids) => { if (confirm(`Delete ${ids.length} car(s)?`)) bulkDeleteMutation.mutate(ids); },
+    },
+  ];
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => carsApi.delete(id),
@@ -211,12 +245,17 @@ export function CarsClient() {
           <h1 className="text-2xl font-semibold tracking-tight">Fleet</h1>
           <p className="text-sm text-muted-foreground">Manage vehicles, categories, and transfers</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" /> Add Car
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" /> Import CSV
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" /> Add Car
+          </Button>
+        </div>
       </div>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap items-center">
         <Input
           placeholder="Search make, model, plate, VIN…"
           value={search}
@@ -230,6 +269,17 @@ export function CarsClient() {
           placeholder="Filter by status"
           className="w-48"
         />
+        <div className="ml-auto">
+          <SavedViewsToolbar
+            page="cars"
+            currentFilters={{ search, statusFilter }}
+            onLoadView={(f) => {
+              const filters = f as { search?: string; statusFilter?: string };
+              if (filters.search !== undefined) setSearch(filters.search);
+              if (filters.statusFilter !== undefined) setStatusFilter(filters.statusFilter);
+            }}
+          />
+        </div>
       </div>
 
       <DataTable
@@ -240,6 +290,8 @@ export function CarsClient() {
         pagination={pagination}
         onPaginationChange={setPagination}
         emptyMessage="No cars found"
+        enableRowSelection
+        bulkActions={bulkActions}
       />
 
       {/* Add / Edit sheet */}
@@ -386,6 +438,8 @@ export function CarsClient() {
           </form>
         </SheetContent>
       </Sheet>
+
+      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} kind="cars" invalidateKey="cars" />
 
       {/* Delete dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

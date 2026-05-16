@@ -59,6 +59,18 @@ export const api = {
   put: <T>(path: string, body?: unknown, init?: RequestInit) =>
     request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined, ...init }),
   delete: <T>(path: string, init?: RequestInit) => request<T>(path, { method: 'DELETE', ...init }),
+  postForm: <T>(path: string, form: FormData) =>
+    fetch(`${API_BASE}${path}`, { method: 'POST', credentials: 'include', body: form })
+      .then(async (res) => {
+        if (!res.ok) {
+          let eb: { error?: { code?: string; message?: string } } = {};
+          try { eb = await res.json(); } catch { /* ignore */ }
+          throw new ApiError(res.status, eb.error?.code ?? 'UNKNOWN', eb.error?.message ?? `HTTP ${res.status}`);
+        }
+        if (res.status === 204) return undefined as T;
+        const body = await res.json() as { data: T } | T;
+        return (body !== null && typeof body === 'object' && 'data' in body) ? (body as { data: T }).data : body as T;
+      }),
 };
 
 // ─── Domain types ────────────────────────────────────────────────────────────
@@ -1117,7 +1129,180 @@ export const accidentsApi = {
   delete: (id: string) => api.delete<void>(`/accidents/${id}`),
 };
 
-// ─── Lookup extensions ────────────────────────────────────────────────────────
+// ─── Reports types ─────────────────────────────────────────────────────────────
 
-// lookupApi.vendors and lookupApi.parts added below via module augmentation approach:
-// These are accessed directly as lookupApi.vendors / lookupApi.parts in components
+export interface ReportSummary {
+  totalBookings: number;
+  activeBookings: number;
+  totalRevenue: number;
+  totalCars: number;
+  rentedCars: number;
+  availableCars: number;
+  inMaintenanceCars: number;
+  activeMaintenance: number;
+  fleetUtilizationPct: number;
+}
+
+export interface RevenuePoint { period: string; total: number; count: number; }
+export interface BookingStatusPoint { status: string; count: number; }
+export interface FleetUtilPoint { category: string; total: number; rented: number; utilization: number; }
+export interface MaintenanceCostRow { car: string; licensePlate: string; totalCost: number; records: number; }
+export interface TopCustomerRow { customer: string; email: string; bookings: number; totalSpent: number; }
+export interface StaffActivityRow { staff: string; email: string; bookingsCreated: number; paymentsRecorded: number; }
+
+function reportParams(p?: { from?: string; to?: string; branchId?: string; groupBy?: string }) {
+  const q = new URLSearchParams();
+  if (p?.from) q.set('from', p.from);
+  if (p?.to) q.set('to', p.to);
+  if (p?.branchId) q.set('branchId', p.branchId);
+  if (p?.groupBy) q.set('groupBy', p.groupBy);
+  return q.toString();
+}
+
+export const reportsApi = {
+  summary: (p?: Parameters<typeof reportParams>[0]) =>
+    api.get<ReportSummary>(`/reports/summary?${reportParams(p)}`),
+  revenue: (p?: Parameters<typeof reportParams>[0]) =>
+    api.get<RevenuePoint[]>(`/reports/revenue?${reportParams(p)}`),
+  bookingsByStatus: (p?: Parameters<typeof reportParams>[0]) =>
+    api.get<BookingStatusPoint[]>(`/reports/bookings-by-status?${reportParams(p)}`),
+  fleetUtilization: () => api.get<FleetUtilPoint[]>('/reports/fleet-utilization'),
+  maintenanceCosts: (p?: Parameters<typeof reportParams>[0]) =>
+    api.get<MaintenanceCostRow[]>(`/reports/maintenance-costs?${reportParams(p)}`),
+  topCustomers: (p?: Parameters<typeof reportParams>[0]) =>
+    api.get<TopCustomerRow[]>(`/reports/top-customers?${reportParams(p)}`),
+  staffActivity: (p?: Parameters<typeof reportParams>[0]) =>
+    api.get<StaffActivityRow[]>(`/reports/staff-activity?${reportParams(p)}`),
+};
+
+// ─── Notifications types ────────────────────────────────────────────────────────
+
+export interface AppNotification {
+  id: string;
+  kind: string;
+  payload: Record<string, unknown>;
+  channel: string;
+  readAt: string | null;
+  sentAt: string | null;
+  createdAt: string;
+}
+
+export const notificationsApi = {
+  list: (unreadOnly = false) =>
+    api.get<AppNotification[]>(`/notifications?unread=${unreadOnly}`),
+  countUnread: () => api.get<number>('/notifications/unread-count'),
+  markRead: (id: string) => api.post<void>(`/notifications/${id}/read`, {}),
+  markAllRead: () => api.post<void>('/notifications/read-all', {}),
+  delete: (id: string) => api.delete<void>(`/notifications/${id}`),
+};
+
+// ─── Webhooks types ────────────────────────────────────────────────────────────
+
+export interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  secret: string;
+  events: string[];
+  isActive: boolean;
+  createdAt: string;
+  _count: { deliveries: number };
+}
+
+export interface WebhookDelivery {
+  id: string;
+  event: string;
+  status: string;
+  attempts: number;
+  lastError: string | null;
+}
+
+export interface CreateWebhookDto {
+  name: string;
+  url: string;
+  secret?: string;
+  events: string[];
+}
+
+export const webhooksApi = {
+  list: () => api.get<Webhook[]>('/webhooks'),
+  deliveries: (id: string, page = 1) =>
+    api.get<PaginatedResponse<WebhookDelivery>>(`/webhooks/${id}/deliveries?page=${page}`),
+  create: (dto: CreateWebhookDto) => api.post<Webhook>('/webhooks', dto),
+  update: (id: string, dto: Partial<CreateWebhookDto> & { isActive?: boolean }) =>
+    api.patch<Webhook>(`/webhooks/${id}`, dto),
+  delete: (id: string) => api.delete<void>(`/webhooks/${id}`),
+};
+
+// ─── API keys types ────────────────────────────────────────────────────────────
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  scopes: string[];
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface CreatedApiKey extends ApiKey { key: string; }
+
+export const apiKeysApi = {
+  list: () => api.get<ApiKey[]>('/api-keys'),
+  create: (dto: { name: string; scopes: string[] }) => api.post<CreatedApiKey>('/api-keys', dto),
+  revoke: (id: string) => api.delete<void>(`/api-keys/${id}`),
+};
+
+// ─── Feature flags types ────────────────────────────────────────────────────────
+
+export interface FeatureFlag {
+  id: string;
+  key: string;
+  enabled: boolean;
+  rolloutPct: number;
+  roles: string[];
+  updatedAt: string;
+}
+
+export const featureFlagsApi = {
+  list: () => api.get<FeatureFlag[]>('/feature-flags'),
+  upsert: (key: string, dto: { enabled: boolean; rolloutPct?: number; roles?: string[] }) =>
+    api.put<FeatureFlag>(`/feature-flags/${key}`, dto),
+  delete: (key: string) => api.delete<void>(`/feature-flags/${key}`),
+};
+
+// ─── Saved views types ─────────────────────────────────────────────────────────
+
+export interface SavedView {
+  id: string;
+  page: string;
+  name: string;
+  filters: Record<string, unknown>;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export const savedViewsApi = {
+  list: (page: string) => api.get<SavedView[]>(`/saved-views?page=${encodeURIComponent(page)}`),
+  save: (dto: { page: string; name: string; filters: Record<string, unknown>; isDefault?: boolean }) =>
+    api.post<SavedView>('/saved-views', dto),
+  setDefault: (id: string) => api.post<SavedView>(`/saved-views/${id}/default`, {}),
+  delete: (id: string) => api.delete<void>(`/saved-views/${id}`),
+};
+
+// ─── Import types ───────────────────────────────────────────────────────────────
+
+export interface ImportResult { created: number; skipped: number; errors: string[]; }
+
+export const importApi = {
+  cars: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.postForm<ImportResult>('/import/cars', form);
+  },
+  customers: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.postForm<ImportResult>('/import/customers', form);
+  },
+};

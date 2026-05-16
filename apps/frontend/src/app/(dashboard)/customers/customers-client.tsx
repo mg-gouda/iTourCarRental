@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef, PaginationState } from '@tanstack/react-table';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/lib/hooks/use-toast';
+import { CsvImportDialog } from '@/components/shared/csv-import/csv-import-dialog';
 
 const FLAG_VARIANT: Record<CustomerFlag, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   VIP: 'default',
@@ -120,6 +121,7 @@ export function CustomersClient() {
   const [search, setSearch] = useState('');
   const [flagFilter, setFlagFilter] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
 
@@ -216,9 +218,14 @@ export function CustomersClient() {
           <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
           <p className="text-sm text-muted-foreground">Manage customer profiles and driver licenses</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" /> Add Customer
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" /> Import CSV
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" /> Add Customer
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-3 flex-wrap">
@@ -408,6 +415,8 @@ export function CustomersClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} kind="customers" invalidateKey="customers" />
     </div>
   );
 }

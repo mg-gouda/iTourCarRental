@@ -1,12 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppSidebar } from '@/components/shared/sidebar/app-sidebar';
 import { AppHeader } from '@/components/shared/header/app-header';
+import { CommandPalette } from '@/components/shared/command-palette/command-palette';
 import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -15,7 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <AppHeader onToggleSidebar={() => setSidebarCollapsed((v) => !v)} />
+        <AppHeader onToggleSidebar={() => setSidebarCollapsed((v) => !v)} onOpenCommandPalette={() => setCmdOpen(true)} />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
@@ -24,6 +37,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </main>
       </div>
+
+      <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
     </div>
   );
 }

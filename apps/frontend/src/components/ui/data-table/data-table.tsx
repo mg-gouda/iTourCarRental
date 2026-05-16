@@ -4,6 +4,7 @@ import * as React from 'react';
 import {
   ColumnDef,
   ColumnFiltersState,
+  RowSelectionState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -19,25 +20,28 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
+export interface BulkAction {
+  label: string;
+  variant?: 'default' | 'destructive' | 'outline';
+  onClick: (selectedIds: string[]) => void;
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
-  /** Total count for server-side pagination */
   totalCount?: number;
-  /** Controlled pagination state (server-side) */
   pagination?: PaginationState;
   onPaginationChange?: (state: PaginationState) => void;
-  /** Global search filter (client-side) */
   searchPlaceholder?: string;
-  /** Column to filter by for global search */
   searchColumn?: string;
   loading?: boolean;
   emptyMessage?: string;
-  /** Extra content in the toolbar (filter chips, action buttons, etc.) */
   toolbar?: React.ReactNode;
+  enableRowSelection?: boolean;
+  bulkActions?: BulkAction[];
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends { id?: string }, TValue>({
   columns,
   data,
   totalCount,
@@ -48,10 +52,13 @@ export function DataTable<TData, TValue>({
   loading,
   emptyMessage = 'No results.',
   toolbar,
+  enableRowSelection,
+  bulkActions,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [internalPagination, setInternalPagination] = React.useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
 
   const isServerPaginated = !!pagination && !!onPaginationChange;
@@ -60,10 +67,37 @@ export function DataTable<TData, TValue>({
     ? Math.ceil(totalCount / activePagination.pageSize)
     : undefined;
 
+  const selectionColumn: ColumnDef<TData, TValue> = {
+    id: '__select__',
+    header: ({ table }) => (
+      <input
+        type="checkbox"
+        checked={table.getIsAllPageRowsSelected()}
+        ref={(el) => { if (el) el.indeterminate = table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected(); }}
+        onChange={table.getToggleAllPageRowsSelectedHandler()}
+        className="h-4 w-4 accent-primary cursor-pointer"
+      />
+    ),
+    cell: ({ row }) => (
+      <input
+        type="checkbox"
+        checked={row.getIsSelected()}
+        onChange={row.getToggleSelectedHandler()}
+        className="h-4 w-4 accent-primary cursor-pointer"
+      />
+    ),
+    size: 40,
+    enableSorting: false,
+  };
+
+  const allColumns = enableRowSelection ? [selectionColumn, ...columns] : columns;
+
   const table = useReactTable({
     data,
-    columns,
-    state: { sorting, columnFilters, columnVisibility, pagination: activePagination },
+    columns: allColumns,
+    state: { sorting, columnFilters, columnVisibility, pagination: activePagination, rowSelection },
+    enableRowSelection,
+    onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -82,11 +116,14 @@ export function DataTable<TData, TValue>({
 
   const currentPage = activePagination.pageIndex;
   const totalPages = pageCount ?? table.getPageCount();
+  const selectedRows = table.getSelectedRowModel().rows;
+  const selectedIds = selectedRows.map((r) => (r.original as { id?: string }).id ?? '').filter(Boolean);
+  const hasSelection = selectedRows.length > 0;
 
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         {searchColumn && (
           <Input
             placeholder={searchPlaceholder}
@@ -97,6 +134,27 @@ export function DataTable<TData, TValue>({
         )}
         {toolbar && <div className="ms-auto flex items-center gap-2">{toolbar}</div>}
       </div>
+
+      {/* Bulk action bar */}
+      {hasSelection && bulkActions && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-2 text-sm">
+          <span className="text-muted-foreground font-medium">{selectedRows.length} selected</span>
+          <div className="h-4 w-px bg-border mx-1" />
+          {bulkActions.map((action) => (
+            <Button
+              key={action.label}
+              variant={action.variant ?? 'outline'}
+              size="sm"
+              onClick={() => { action.onClick(selectedIds); setRowSelection({}); }}
+            >
+              {action.label}
+            </Button>
+          ))}
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setRowSelection({})}>
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-md border">
@@ -132,7 +190,7 @@ export function DataTable<TData, TValue>({
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {columns.map((_, j) => (
+                  {allColumns.map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-pulse rounded bg-muted" />
                     </TableCell>
@@ -141,7 +199,11 @@ export function DataTable<TData, TValue>({
               ))
             ) : table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() ? 'selected' : undefined}
+                  className={cn(row.getIsSelected() && 'bg-primary/5')}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -151,7 +213,7 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={allColumns.length} className="h-24 text-center text-muted-foreground">
                   {emptyMessage}
                 </TableCell>
               </TableRow>

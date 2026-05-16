@@ -34,6 +34,13 @@ import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { PartsModule } from './modules/parts/parts.module';
 import { AccidentsModule } from './modules/accidents/accidents.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { ApiKeysModule } from './modules/api-keys/api-keys.module';
+import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module';
+import { SavedViewsModule } from './modules/saved-views/saved-views.module';
+import { ImportModule } from './modules/import/import.module';
 
 @Module({
   imports: [
@@ -73,6 +80,13 @@ import { AccidentsModule } from './modules/accidents/accidents.module';
     VendorsModule,
     PartsModule,
     AccidentsModule,
+    ReportsModule,
+    NotificationsModule,
+    WebhooksModule,
+    ApiKeysModule,
+    FeatureFlagsModule,
+    SavedViewsModule,
+    ImportModule,
   ],
   providers: [
     // Global guards — run on every route

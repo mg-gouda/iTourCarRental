@@ -339,3 +339,75 @@ pnpm dev:down
 
 **Commit:** 4d1241d
 **PR:** https://github.com/mg-gouda/iTourCarRental/pull/4
+
+---
+
+## [2026-05-16 12:00] Phase 6 — Insights & Integrations
+
+**Phase:** 6
+**Scope:** Reports/analytics, notifications, command palette, bulk operations, CSV import, saved views, webhooks, API keys, feature flags, in-app help page
+
+**Files touched:**
+
+**6a — Reports:**
+- `apps/backend/src/modules/reports/reports.service.ts` — New: 7 report methods (revenue, bookings-by-status, fleet-utilization, top-customers, staff-activity, maintenance-costs, SLA-compliance) using `$queryRawUnsafe` with `as Array<{...}>` cast (Prisma 6 has no type generics on raw queries)
+- `apps/backend/src/modules/reports/reports.controller.ts` — New: 7 GET endpoints under `/reports`
+- `apps/backend/src/modules/reports/reports.module.ts` — New
+- `apps/frontend/src/lib/api.ts` — Extended: ReportSummary type + reportsApi
+- `apps/frontend/src/app/(dashboard)/reports/reports-client.tsx` — New: KPI cards, LineChart (revenue), horizontal BarChart (bookings by status), BarChart (fleet utilization), tables (top customers, staff activity, maintenance costs). COLORS use hardcoded HSL values (project has no `--chart-N` CSS vars)
+- `apps/frontend/src/app/(dashboard)/reports/page.tsx` — Updated stub
+
+**6b — Notifications:**
+- `apps/backend/src/modules/notifications/notifications.service.ts` — New: notify(), list(), countUnread(), markRead(), markAllRead(), delete()
+- `apps/backend/src/modules/notifications/notifications.controller.ts` — New: GET/PATCH/DELETE endpoints
+- `apps/backend/src/modules/notifications/notifications.module.ts` — New: `@Global()` so NotificationsService can be injected anywhere
+- `apps/frontend/src/lib/api.ts` — Extended: AppNotification type + notificationsApi
+- `apps/frontend/src/components/shared/header/app-header.tsx` — Updated: notification bell with unread badge, dropdown to mark read/delete, search bar trigger for command palette
+
+**6c — Power-user features:**
+- `apps/frontend/src/components/shared/command-palette/command-palette.tsx` — New: cmdk-based palette with 22 nav items grouped by section; triggered by Cmd+K or header search bar
+- `apps/frontend/src/app/(dashboard)/layout.tsx` — Updated: useEffect for Cmd+K; renders CommandPalette; passes onOpenCommandPalette to AppHeader
+- `apps/frontend/src/components/ui/data-table/data-table.tsx` — Updated: BulkAction interface export; enableRowSelection + bulkActions props; checkbox selection column; bulk action bar; row highlighting
+- `apps/frontend/src/app/(dashboard)/cars/cars-client.tsx` — Updated: bulk Set Available / Set Out of Service / Delete; CSV import button + CsvImportDialog; SavedViewsToolbar
+- `apps/frontend/src/app/(dashboard)/customers/customers-client.tsx` — Updated: CSV import button + CsvImportDialog
+- `apps/frontend/src/components/shared/csv-import/csv-import-dialog.tsx` — New: template download, drag-drop file zone, import result display (created/skipped/errors)
+- `apps/frontend/src/components/shared/saved-views/saved-views-toolbar.tsx` — New: per-page saved filter views with load/default/delete/save current filters
+- `apps/backend/src/modules/saved-views/saved-views.service.ts` — New: listForPage, save, setDefault (unsets others first), delete
+- `apps/backend/src/modules/saved-views/saved-views.controller.ts` — New: GET/POST/PATCH/DELETE under `/saved-views`
+- `apps/backend/src/modules/saved-views/saved-views.module.ts` — New
+- `apps/backend/src/modules/import/import.service.ts` — New: inline parseCSV(); importCars(); importCustomers() — no external csv lib; CustomerSource set to `ADMIN_CREATED`; only valid CustomerFlag values (BLACKLISTED/WATCHLIST/VIP)
+- `apps/backend/src/modules/import/import.controller.ts` — New: POST `/import/cars` + `/import/customers` with Multer FileInterceptor (memoryStorage)
+- `apps/backend/src/modules/import/import.module.ts` — New
+- `apps/frontend/src/lib/api.ts` — Extended: postForm(); SavedView type + savedViewsApi; ImportResult type + importApi
+
+**6d — Platform config + Help:**
+- `apps/backend/src/modules/webhooks/webhooks.service.ts` — New: CRUD + deliveries()
+- `apps/backend/src/modules/webhooks/webhooks.controller.ts` — New: full REST + GET `/webhooks/:id/deliveries`
+- `apps/backend/src/modules/webhooks/webhooks.module.ts` — New
+- `apps/backend/src/modules/api-keys/api-keys.service.ts` — New: create() generates `sk_{48 hex chars}` stored as SHA-256 hash; plaintext returned once only
+- `apps/backend/src/modules/api-keys/api-keys.controller.ts` — New
+- `apps/backend/src/modules/api-keys/api-keys.module.ts` — New
+- `apps/backend/src/modules/feature-flags/feature-flags.service.ts` — New: upsert() + list() + delete()
+- `apps/backend/src/modules/feature-flags/feature-flags.controller.ts` — New
+- `apps/backend/src/modules/feature-flags/feature-flags.module.ts` — New
+- `apps/backend/src/app.module.ts` — Added all Phase 6 modules
+- `apps/frontend/src/lib/api.ts` — Extended: Webhook/ApiKey/CreatedApiKey/FeatureFlag types + webhooksApi/apiKeysApi/featureFlagsApi
+- `apps/frontend/src/app/(dashboard)/system/settings/settings-client.tsx` — New: 3-tab page (Webhooks, API Keys, Feature Flags); webhook create sheet with event quick-add; API key create dialog with one-time reveal + copy; feature flag toggle with rollout %
+- `apps/frontend/src/app/(dashboard)/system/settings/page.tsx` — Updated stub
+- `apps/frontend/src/app/(dashboard)/help/page.tsx` — New: keyboard shortcuts, module reference cards (link to each section), CSV import format reference tables, support blurb
+
+**Tests:** N/A
+**Migration:** No — all Phase 6 Prisma models (Notification, Webhook, WebhookDelivery, ApiKey, FeatureFlag, SavedView) already in schema
+
+**Notes:**
+- Recharts color tokens `--chart-N` are not defined in this project's CSS theme; hardcoded HSL values used in reports client instead
+- Prisma 6: `$queryRawUnsafe<Type>()` doesn't accept generic type arguments — use `(await ...) as Array<{...}>` pattern
+- NotificationsModule is `@Global()` so other services can call `NotificationsService.notify()` without re-importing
+- BullMQ is installed but not used for Phase 6 — notifications are synchronous in-app DB writes (simpler, sufficient for v1)
+- CSV import avoids `csv-parse` dependency; inline parser handles quoted fields and CRLF/LF line endings
+- `postForm` on api client is a raw `fetch` (no `Content-Type: application/json`) so multipart boundary is set correctly by the browser
+- SavedView Prisma model and migration already in schema from Phase 1 — no new migration needed
+- API key: only the create response includes the plaintext `key` field; subsequent list/get never return it
+
+**Commit:** TBD
+**PR:** TBD
