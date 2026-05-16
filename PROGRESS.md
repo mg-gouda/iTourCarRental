@@ -444,5 +444,5 @@ pnpm dev:down
 - DELETE /profile/2fa passes body via `RequestInit.body` — non-standard but works with NestJS @Body() decorator
 - Calendar view was already complete from Phase 3; no work needed
 
-**Commit:** TBD
-**PR:** TBD
+**Commit:** dab76d7
+**PR:** TBD — push feat/v1-completion then open PR against main
