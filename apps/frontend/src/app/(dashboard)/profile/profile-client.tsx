@@ -49,9 +49,10 @@ function ProfileInfoTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading, isError, refetch } = useQuery({
     queryKey: ['profile', 'me'],
     queryFn: profileApi.me,
+    retry: 1,
   });
 
   const { register, handleSubmit, control, reset, formState: { errors, isDirty } } = useForm<ProfileFormValues>({
@@ -78,10 +79,19 @@ function ProfileInfoTab() {
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  if (isLoading || !profile) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isError || !profile) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+        <p className="text-sm">Failed to load profile. Your session may have expired.</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
       </div>
     );
   }
@@ -290,7 +300,11 @@ function TwoFATab() {
   const [disablePassword, setDisablePassword] = React.useState('');
   const [copied, setCopied] = React.useState(false);
 
-  const { data: profile } = useQuery({ queryKey: ['profile', 'me'], queryFn: profileApi.me });
+  const { data: profile, isLoading: profileLoading, isError: profileError, refetch: refetchProfile } = useQuery({
+    queryKey: ['profile', 'me'],
+    queryFn: profileApi.me,
+    retry: 1,
+  });
 
   const setupMutation = useMutation({
     mutationFn: profileApi.setup2fa,
@@ -325,7 +339,22 @@ function TwoFATab() {
     }
   }
 
-  if (!profile) return null;
+  if (profileLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (profileError || !profile) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+        <p className="text-sm">Failed to load profile. Your session may have expired.</p>
+        <Button variant="outline" size="sm" onClick={() => refetchProfile()}>Retry</Button>
+      </div>
+    );
+  }
 
   if (profile.twoFactorEnabled) {
     return (
