@@ -8,7 +8,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-import { carsApi, Car, CarStatus, CreateCarDto, UpdateCarDto } from '@/lib/api';
+import { carsApi, Car, CarStatus, CreateCarDto, UpdateCarDto, tagsApi, Tag } from '@/lib/api';
 import { DataTable, BulkAction } from '@/components/ui/data-table/data-table';
 import { AsyncCombobox } from '@/components/ui/combobox/async-combobox';
 import { Combobox } from '@/components/ui/combobox/combobox';
@@ -20,6 +20,47 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import { lookupApi } from '@/lib/api';
+
+// ── Tags panel ────────────────────────────────────────────────────────────────
+
+function TagsPanel({ entityId, assignedTags, onAssign, onRemove }: {
+  entityId: string;
+  assignedTags: { tag: { id: string; name: string; color: string | null } }[];
+  onAssign: (tagId: string) => void;
+  onRemove: (tagId: string) => void;
+}) {
+  const qc = useQueryClient();
+  const { data: allTags = [] } = useQuery({ queryKey: ['tags'], queryFn: tagsApi.list });
+  const assigned = assignedTags.map((t) => t.tag);
+  const assignedIds = new Set(assigned.map((t) => t.id));
+  const available = (allTags as Tag[]).filter((t) => !assignedIds.has(t.id));
+
+  return (
+    <div className="space-y-2">
+      <Label>Tags</Label>
+      <div className="flex flex-wrap gap-1 min-h-[28px]">
+        {assigned.map((tag) => (
+          <Badge key={tag.id} variant="secondary" className="gap-1 pl-2 pr-1">
+            {tag.name}
+            <button type="button" className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5" onClick={() => onRemove(tag.id)}>
+              ×
+            </button>
+          </Badge>
+        ))}
+        {assigned.length === 0 && <span className="text-xs text-muted-foreground">No tags</span>}
+      </div>
+      {available.length > 0 && (
+        <Combobox
+          options={available.map((t) => ({ value: t.id, label: t.name }))}
+          value=""
+          onValueChange={(id) => { if (id) onAssign(id); }}
+          placeholder="Add tag…"
+          className="h-8 text-sm"
+        />
+      )}
+    </div>
+  );
+}
 import { CsvImportDialog } from '@/components/shared/csv-import/csv-import-dialog';
 import { SavedViewsToolbar } from '@/components/shared/saved-views/saved-views-toolbar';
 
@@ -62,7 +103,7 @@ type CarFormValues = z.infer<typeof carSchema>;
 
 // ── Table columns ─────────────────────────────────────────────────────────────
 
-function useColumns(onEdit: (car: Car) => void, onDelete: (car: Car) => void) {
+function useColumns(onEdit: (car: Car) => void, onDelete: (car: Car) => void, onTransfer: (car: Car) => void) {
   const columns: ColumnDef<Car>[] = [
     {
       accessorFn: (r) => `${r.make} ${r.model}`,
@@ -106,10 +147,13 @@ function useColumns(onEdit: (car: Car) => void, onDelete: (car: Car) => void) {
       id: 'actions',
       cell: ({ row }) => (
         <div className="flex gap-1 justify-end">
-          <Button size="icon" variant="ghost" onClick={() => onEdit(row.original)}>
+          <Button size="icon" variant="ghost" title="Transfer branch" onClick={(e) => { e.stopPropagation(); onTransfer(row.original); }}>
+            <ArrowLeftRight className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(row.original); }}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button size="icon" variant="ghost" onClick={() => onDelete(row.original)}>
+          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(row.original); }}>
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
@@ -132,6 +176,9 @@ export function CarsClient() {
   const [importOpen, setImportOpen] = useState(false);
   const [editCar, setEditCar] = useState<Car | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Car | null>(null);
+  const [transferTarget, setTransferTarget] = useState<Car | null>(null);
+  const [transferBranchId, setTransferBranchId] = useState('');
+  const [transferNotes, setTransferNotes] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['cars', pagination, search, statusFilter],
@@ -195,6 +242,31 @@ export function CarsClient() {
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  const transferMutation = useMutation({
+    mutationFn: ({ id, toBranchId, notes }: { id: string; toBranchId: string; notes: string }) =>
+      carsApi.transfer(id, { toBranchId, notes: notes || undefined }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cars'] });
+      setTransferTarget(null);
+      setTransferBranchId('');
+      setTransferNotes('');
+      toast({ title: 'Car transferred' });
+    },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const assignTagMutation = useMutation({
+    mutationFn: ({ carId, tagId }: { carId: string; tagId: string }) => tagsApi.assignToCar(carId, tagId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cars'] }),
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const removeTagMutation = useMutation({
+    mutationFn: ({ carId, tagId }: { carId: string; tagId: string }) => tagsApi.removeFromCar(carId, tagId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cars'] }),
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   function openCreate() {
     setEditCar(null);
     form.reset({ transmission: 'AUTOMATIC', fuelType: 'PETROL', seats: 5, currentMileage: 0 });
@@ -225,7 +297,7 @@ export function CarsClient() {
     }
   }
 
-  const columns = useColumns(openEdit, (car) => setDeleteTarget(car));
+  const columns = useColumns(openEdit, (car) => setDeleteTarget(car), (car) => { setTransferTarget(car); setTransferBranchId(''); setTransferNotes(''); });
 
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
   const transmissionOptions = [{ value: 'AUTOMATIC', label: 'Automatic' }, { value: 'MANUAL', label: 'Manual' }];
@@ -429,6 +501,15 @@ export function CarsClient() {
               <Input {...form.register('registrationExpiry')} type="date" />
             </div>
 
+            {editCar && (
+              <TagsPanel
+                entityId={editCar.id}
+                assignedTags={editCar.tags}
+                onAssign={(tagId) => assignTagMutation.mutate({ carId: editCar.id, tagId })}
+                onRemove={(tagId) => removeTagMutation.mutate({ carId: editCar.id, tagId })}
+              />
+            )}
+
             <SheetFooter>
               <Button type="button" variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
@@ -440,6 +521,49 @@ export function CarsClient() {
       </Sheet>
 
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} kind="cars" invalidateKey="cars" />
+
+      {/* Transfer dialog */}
+      <Dialog open={!!transferTarget} onOpenChange={() => setTransferTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transfer Car</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-4">
+            Transfer <strong>{transferTarget?.make} {transferTarget?.model}</strong> ({transferTarget?.licensePlate}) to a new home branch.
+          </p>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>Destination Branch *</Label>
+              <AsyncCombobox
+                value={transferBranchId}
+                onValueChange={setTransferBranchId}
+                fetchOptions={async (q) => {
+                  const res = await lookupApi.branches(q);
+                  return res.map((b) => ({ value: b.id, label: b.name, description: b.city }));
+                }}
+                placeholder="Search branch…"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Notes</Label>
+              <Input
+                value={transferNotes}
+                onChange={(e) => setTransferNotes(e.target.value)}
+                placeholder="Reason for transfer (optional)"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setTransferTarget(null)}>Cancel</Button>
+            <Button
+              disabled={!transferBranchId || transferMutation.isPending}
+              onClick={() => transferTarget && transferMutation.mutate({ id: transferTarget.id, toBranchId: transferBranchId, notes: transferNotes })}
+            >
+              Transfer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

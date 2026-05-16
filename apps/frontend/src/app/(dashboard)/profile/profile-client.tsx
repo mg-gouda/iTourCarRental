@@ -2,10 +2,9 @@
 
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
 import {
   User, Lock, ShieldCheck, Monitor, Laptop, Smartphone, Globe,
-  LogOut, Camera, Loader2, Check, Copy, Eye, EyeOff,
+  LogOut, Camera, Loader2, Check, Copy, Eye, EyeOff, Bell,
 } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/lib/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
@@ -102,7 +102,23 @@ function ProfileInfoTab() {
                 className="absolute -bottom-1 -end-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow hover:bg-primary/90"
               >
                 <Camera className="h-3 w-3" />
-                <input id="avatar-upload" type="file" accept="image/*" className="sr-only" />
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      await profileApi.uploadAvatar(file);
+                      queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+                      toast({ title: 'Avatar updated' });
+                    } catch {
+                      toast({ title: 'Upload failed', variant: 'destructive' });
+                    }
+                  }}
+                />
               </label>
             </div>
             <div>
@@ -414,6 +430,71 @@ function TwoFATab() {
   );
 }
 
+// ─── Notification prefs tab ───────────────────────────────────────────────────
+
+const NOTIF_PREFS = [
+  { key: 'booking.confirmed', label: 'Booking confirmed' },
+  { key: 'booking.cancelled', label: 'Booking cancelled' },
+  { key: 'booking.checkin', label: 'Check-in' },
+  { key: 'booking.checkout', label: 'Check-out' },
+  { key: 'payment.received', label: 'Payment received' },
+  { key: 'invoice.generated', label: 'Invoice generated' },
+  { key: 'maintenance.due', label: 'Maintenance due' },
+  { key: 'system.alerts', label: 'System alerts' },
+] as const;
+
+function NotificationPrefsTab() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data: profile } = useQuery({ queryKey: ['profile', 'me'], queryFn: profileApi.me });
+
+  const prefs: Record<string, boolean> = (profile?.notificationPrefs as Record<string, boolean>) ?? {};
+
+  const { mutate: save, isPending } = useMutation({
+    mutationFn: (notificationPrefs: Record<string, boolean>) =>
+      profileApi.update({ notificationPrefs }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile', 'me'] });
+      toast({ title: 'Preferences saved' });
+    },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const [local, setLocal] = React.useState<Record<string, boolean>>({});
+  const [hydrated, setHydrated] = React.useState(false);
+
+  if (profile && !hydrated) {
+    setHydrated(true);
+    setLocal(Object.fromEntries(NOTIF_PREFS.map(({ key }) => [key, prefs[key] !== false])));
+  }
+
+  return (
+    <div className="max-w-md space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">In-app Notifications</CardTitle>
+          <CardDescription>Choose which events create an in-app notification for you.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {NOTIF_PREFS.map(({ key, label }) => (
+            <div key={key} className="flex items-center justify-between">
+              <label htmlFor={`notif-${key}`} className="text-sm cursor-pointer">{label}</label>
+              <Switch
+                id={`notif-${key}`}
+                checked={local[key] ?? true}
+                onCheckedChange={(v) => setLocal((l) => ({ ...l, [key]: v }))}
+              />
+            </div>
+          ))}
+          <Button size="sm" className="mt-2 w-full" onClick={() => save(local)} disabled={isPending || !hydrated}>
+            {isPending ? 'Saving…' : 'Save Preferences'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Sessions tab ─────────────────────────────────────────────────────────────
 
 function SessionsTab() {
@@ -514,6 +595,10 @@ export function ProfileClient() {
             <ShieldCheck className="h-4 w-4" />
             2FA
           </TabsTrigger>
+          <TabsTrigger value="notifications" className="gap-2">
+            <Bell className="h-4 w-4" />
+            Notifications
+          </TabsTrigger>
           <TabsTrigger value="sessions" className="gap-2">
             <Monitor className="h-4 w-4" />
             Sessions
@@ -523,6 +608,7 @@ export function ProfileClient() {
         <TabsContent value="info" className="mt-6"><ProfileInfoTab /></TabsContent>
         <TabsContent value="security" className="mt-6"><SecurityTab /></TabsContent>
         <TabsContent value="2fa" className="mt-6"><TwoFATab /></TabsContent>
+        <TabsContent value="notifications" className="mt-6"><NotificationPrefsTab /></TabsContent>
         <TabsContent value="sessions" className="mt-6"><SessionsTab /></TabsContent>
       </Tabs>
     </div>

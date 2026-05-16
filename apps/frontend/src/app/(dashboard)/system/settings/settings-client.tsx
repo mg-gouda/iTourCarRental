@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Copy, Eye, EyeOff, ToggleLeft, ToggleRight, Pencil, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Copy, Eye, EyeOff, ToggleLeft, ToggleRight, Pencil, CheckCircle, Mail } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,6 +12,7 @@ import {
   webhooksApi, Webhook, CreateWebhookDto,
   apiKeysApi, ApiKey, CreatedApiKey,
   featureFlagsApi, FeatureFlag,
+  settingsApi,
 } from '@/lib/api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -350,16 +351,136 @@ function FeatureFlagsTab() {
   );
 }
 
+// ─── Email settings tab ────────────────────────────────────────────────────────
+
+const SMTP_KEYS = ['smtp.host', 'smtp.port', 'smtp.secure', 'smtp.user', 'smtp.pass', 'smtp.from', 'smtp.fromName'] as const;
+type SmtpKey = typeof SMTP_KEYS[number];
+
+function EmailTab() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [showPass, setShowPass] = useState(false);
+
+  const { data: allSettings } = useQuery({ queryKey: ['settings'], queryFn: settingsApi.getAll });
+
+  const smtp = Object.fromEntries(
+    SMTP_KEYS.map((k) => [k, allSettings?.[k] ?? ''])
+  ) as Record<SmtpKey, unknown>;
+
+  const [form, setForm] = useState<Record<SmtpKey, string>>({
+    'smtp.host': '',
+    'smtp.port': '587',
+    'smtp.secure': 'false',
+    'smtp.user': '',
+    'smtp.pass': '',
+    'smtp.from': '',
+    'smtp.fromName': 'iTour Car Rental',
+  });
+
+  // Populate form from settings once loaded
+  const [hydrated, setHydrated] = useState(false);
+  if (allSettings && !hydrated) {
+    setHydrated(true);
+    setForm({
+      'smtp.host': String(smtp['smtp.host'] ?? ''),
+      'smtp.port': String(smtp['smtp.port'] ?? '587'),
+      'smtp.secure': String(smtp['smtp.secure'] ?? 'false'),
+      'smtp.user': String(smtp['smtp.user'] ?? ''),
+      'smtp.pass': String(smtp['smtp.pass'] ?? ''),
+      'smtp.from': String(smtp['smtp.from'] ?? ''),
+      'smtp.fromName': String(smtp['smtp.fromName'] ?? 'iTour Car Rental'),
+    });
+  }
+
+  const { mutate: save, isPending } = useMutation({
+    mutationFn: () => settingsApi.setMany(
+      Object.fromEntries(Object.entries(form).map(([k, v]) => [k, k === 'smtp.secure' ? v === 'true' : v]))
+    ),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['settings'] }); toast({ title: 'Email settings saved' }); },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  function field(key: SmtpKey, label: string, type = 'text', placeholder = '') {
+    return (
+      <div className="space-y-1.5">
+        <Label className="text-xs">{label}</Label>
+        <Input
+          type={type === 'password' ? (showPass ? 'text' : 'password') : type}
+          value={form[key]}
+          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+          placeholder={placeholder}
+          className="h-8 text-xs"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-xl space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Configure the SMTP server used to send booking confirmations, invoices, and refund notices.
+        Leave <span className="font-mono">Host</span> blank to disable email delivery.
+      </p>
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          {field('smtp.host', 'SMTP Host', 'text', 'mail.example.com')}
+          {field('smtp.port', 'Port', 'number', '587')}
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form['smtp.secure'] === 'true'}
+            onCheckedChange={(v) => setForm((f) => ({ ...f, 'smtp.secure': v ? 'true' : 'false' }))}
+            id="smtp-secure"
+          />
+          <Label htmlFor="smtp-secure" className="text-xs cursor-pointer">Use TLS (port 465)</Label>
+        </div>
+        {field('smtp.user', 'Username / Email', 'text', 'user@example.com')}
+        <div className="space-y-1.5">
+          <Label className="text-xs">Password</Label>
+          <div className="relative">
+            <Input
+              type={showPass ? 'text' : 'password'}
+              value={form['smtp.pass']}
+              onChange={(e) => setForm((f) => ({ ...f, 'smtp.pass': e.target.value }))}
+              className="h-8 text-xs pr-8"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {field('smtp.from', 'From Address', 'email', 'noreply@example.com')}
+          {field('smtp.fromName', 'From Name', 'text', 'iTour Car Rental')}
+        </div>
+      </div>
+      <Button size="sm" onClick={() => save()} disabled={isPending}>
+        {isPending ? 'Saving…' : 'Save Email Settings'}
+      </Button>
+    </div>
+  );
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────────
 
 export function SettingsClient() {
   return (
-    <Tabs defaultValue="webhooks" className="space-y-6">
+    <Tabs defaultValue="email" className="space-y-6">
       <TabsList>
+        <TabsTrigger value="email">Email</TabsTrigger>
         <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
         <TabsTrigger value="api-keys">API Keys</TabsTrigger>
         <TabsTrigger value="feature-flags">Feature Flags</TabsTrigger>
       </TabsList>
+
+      <TabsContent value="email" className="space-y-4">
+        <EmailTab />
+      </TabsContent>
 
       <TabsContent value="webhooks" className="space-y-4">
         <WebhooksTab />

@@ -5,10 +5,14 @@ import {
   Post,
   Delete,
   Body,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { ProfileService } from './profile.service';
 import { UpdateProfileDto, ChangePasswordDto, Verify2faDto, Disable2faDto } from './dto/profile.dto';
 import { AuthGuard } from '../../common/guards/auth.guard';
@@ -51,5 +55,11 @@ export class ProfileController {
   @HttpCode(HttpStatus.NO_CONTENT)
   disable2fa(@CurrentUser() user: SessionUserDto, @Body() dto: Disable2faDto) {
     return this.profileService.disable2fa(user.id, dto);
+  }
+
+  @Post('avatar')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }))
+  uploadAvatar(@CurrentUser() user: SessionUserDto, @UploadedFile() file: Express.Multer.File) {
+    return this.profileService.uploadAvatar(user.id, file);
   }
 }

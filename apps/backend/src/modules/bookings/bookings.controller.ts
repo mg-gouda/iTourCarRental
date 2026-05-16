@@ -84,4 +84,19 @@ export class BookingsController {
   delete(@Param('id') id: string) {
     return this.svc.delete(id);
   }
+
+  @Post(':id/drivers')
+  @RequirePermission('bookings.edit')
+  addDriver(
+    @Param('id') id: string,
+    @Body() dto: { fullName: string; age: number; phone?: string },
+  ) {
+    return this.svc.addDriver(id, dto);
+  }
+
+  @Delete(':id/drivers/:driverId')
+  @RequirePermission('bookings.edit')
+  removeDriver(@Param('id') id: string, @Param('driverId') driverId: string) {
+    return this.svc.removeDriver(id, driverId);
+  }
 }

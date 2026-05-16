@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PricingService } from './pricing.service';
+import { EmailService } from '../email/email.service';
 import { InputJsonValue } from '@prisma/client/runtime/library';
 import { CreateBookingDto, UpdateBookingDto, CancelBookingDto, CheckinDto, CheckoutDto, QuoteDto } from './dto/booking.dto';
 
@@ -18,6 +19,8 @@ const BOOKING_SELECT = {
   returnBranch: { select: { id: true, name: true, code: true } },
   extras: { include: { extra: { select: { code: true, name: true } } } },
   modifications: { select: { id: true, kind: true, createdAt: true, newTotal: true } },
+  additionalDrivers: { select: { id: true, fullName: true, age: true, phone: true } },
+  inspections: { select: { id: true, kind: true, performedAt: true, mileage: true, fuelLevel: true, notes: true } },
   _count: { select: { payments: true, invoices: true } },
 };
 
@@ -26,6 +29,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly pricing: PricingService,
+    private readonly email: EmailService,
   ) {}
 
   // ── Quote ─────────────────────────────────────────────────────────────────
@@ -190,11 +194,24 @@ export class BookingsService {
     if (booking.status !== 'HOLD' && booking.status !== 'PENDING') {
       throw new BadRequestException(`Cannot confirm booking in status ${booking.status}`);
     }
-    return this.prisma.booking.update({
+    const updated = await this.prisma.booking.update({
       where: { id },
       data: { status: 'CONFIRMED', holdExpiresAt: null, updatedById: userId },
       select: BOOKING_SELECT,
     });
+    // Fire-and-forget confirmation email
+    this.email.sendBookingConfirmation({
+      bookingNumber: updated.bookingNumber,
+      customer: updated.customer as { fullName: string; email: string | null },
+      pickupAt: updated.pickupAt.toISOString(),
+      returnAt: updated.returnAt.toISOString(),
+      car: updated.car as { make: string; model: string; licensePlate: string },
+      pickupBranch: updated.pickupBranch as { name: string },
+      returnBranch: updated.returnBranch as { name: string },
+      totalAmount: updated.totalAmount ?? 0,
+      currency: updated.currency,
+    }).catch(() => {});
+    return updated;
   }
 
   // ── Cancel ────────────────────────────────────────────────────────────────
@@ -323,6 +340,21 @@ export class BookingsService {
   }
 
   // ── Calendar data ─────────────────────────────────────────────────────────
+
+  async addDriver(bookingId: string, dto: { fullName: string; age: number; phone?: string }) {
+    const booking = await this.prisma.booking.findFirst({ where: { id: bookingId, deletedAt: null } });
+    if (!booking) throw new NotFoundException('Booking not found');
+    return this.prisma.additionalDriver.create({
+      data: { bookingId, fullName: dto.fullName, age: dto.age, phone: dto.phone },
+      select: { id: true, fullName: true, age: true, phone: true },
+    });
+  }
+
+  async removeDriver(bookingId: string, driverId: string) {
+    const driver = await this.prisma.additionalDriver.findFirst({ where: { id: driverId, bookingId } });
+    if (!driver) throw new NotFoundException('Driver not found');
+    await this.prisma.additionalDriver.delete({ where: { id: driverId } });
+  }
 
   async calendar(from: string, to: string, branchId?: string) {
     const bookings = await this.prisma.booking.findMany({

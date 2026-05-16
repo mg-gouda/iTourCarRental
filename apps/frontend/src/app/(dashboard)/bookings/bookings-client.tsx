@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { ColumnDef, PaginationState } from '@tanstack/react-table';
 import { Plus, Check, X, Car, ArrowRight, Clock, AlertCircle } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
@@ -534,6 +535,7 @@ function CancelDialog({ booking, onClose }: { booking: Booking | null; onClose: 
 // ─── Main bookings client ─────────────────────────────────────────────────────
 
 export default function BookingsClient() {
+  const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
@@ -713,6 +715,7 @@ export default function BookingsClient() {
         loading={isLoading}
         emptyMessage="No bookings found."
         toolbar={toolbar}
+        onRowClick={(row) => router.push(`/bookings/${row.id}`)}
       />
       <CreateBookingSheet open={createOpen} onClose={() => setCreateOpen(false)} />
       <CancelDialog booking={cancelTarget} onClose={() => setCancelTarget(null)} />

@@ -8,7 +8,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-import { customersApi, Customer, CustomerFlag, CustomerSource, CreateCustomerDto, UpdateCustomerDto, lookupApi } from '@/lib/api';
+import { customersApi, Customer, CustomerFlag, CustomerSource, CreateCustomerDto, UpdateCustomerDto, lookupApi, tagsApi, Tag } from '@/lib/api';
 import { DataTable } from '@/components/ui/data-table/data-table';
 import { AsyncCombobox } from '@/components/ui/combobox/async-combobox';
 import { Combobox } from '@/components/ui/combobox/combobox';
@@ -21,6 +21,45 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/lib/hooks/use-toast';
 import { CsvImportDialog } from '@/components/shared/csv-import/csv-import-dialog';
+
+// ── Tags panel ────────────────────────────────────────────────────────────────
+
+function TagsPanel({ assignedTags, onAssign, onRemove }: {
+  assignedTags: { tag: { id: string; name: string; color: string | null } }[];
+  onAssign: (tagId: string) => void;
+  onRemove: (tagId: string) => void;
+}) {
+  const { data: allTags = [] } = useQuery({ queryKey: ['tags'], queryFn: tagsApi.list });
+  const assigned = assignedTags.map((t) => t.tag);
+  const assignedIds = new Set(assigned.map((t) => t.id));
+  const available = (allTags as Tag[]).filter((t) => !assignedIds.has(t.id));
+
+  return (
+    <div className="space-y-2">
+      <Label>Tags</Label>
+      <div className="flex flex-wrap gap-1 min-h-[28px]">
+        {assigned.map((tag) => (
+          <Badge key={tag.id} variant="secondary" className="gap-1 pl-2 pr-1">
+            {tag.name}
+            <button type="button" className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5" onClick={() => onRemove(tag.id)}>
+              ×
+            </button>
+          </Badge>
+        ))}
+        {assigned.length === 0 && <span className="text-xs text-muted-foreground">No tags</span>}
+      </div>
+      {available.length > 0 && (
+        <Combobox
+          options={available.map((t) => ({ value: t.id, label: t.name }))}
+          value=""
+          onValueChange={(id) => { if (id) onAssign(id); }}
+          placeholder="Add tag…"
+          className="h-8 text-sm"
+        />
+      )}
+    </div>
+  );
+}
 
 const FLAG_VARIANT: Record<CustomerFlag, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   VIP: 'default',
@@ -148,6 +187,18 @@ export function CustomersClient() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => customersApi.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['customers'] }); setDeleteTarget(null); toast({ title: 'Customer removed' }); },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const assignTagMutation = useMutation({
+    mutationFn: ({ customerId, tagId }: { customerId: string; tagId: string }) => tagsApi.assignToCustomer(customerId, tagId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const removeTagMutation = useMutation({
+    mutationFn: ({ customerId, tagId }: { customerId: string; tagId: string }) => tagsApi.removeFromCustomer(customerId, tagId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
@@ -387,6 +438,13 @@ export function CustomersClient() {
                     placeholder="e.g. Pays late, always follow up"
                   />
                 </div>
+                {editCustomer && (
+                  <TagsPanel
+                    assignedTags={editCustomer.tags}
+                    onAssign={(tagId) => assignTagMutation.mutate({ customerId: editCustomer.id, tagId })}
+                    onRemove={(tagId) => removeTagMutation.mutate({ customerId: editCustomer.id, tagId })}
+                  />
+                )}
               </TabsContent>
             </Tabs>
 

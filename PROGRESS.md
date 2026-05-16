@@ -446,3 +446,46 @@ pnpm dev:down
 
 **Commit:** dab76d7
 **PR:** TBD — push feat/v1-completion then open PR against main
+
+---
+
+## [2026-05-16 16:00] V1 Completion — Additional Drivers, Booking Detail, Avatar Upload, Car Transfer, Email SMTP Settings, Notification Prefs, Tags UI
+
+**Phase:** V1 completion pass
+**Scope:** All remaining V1 UI gaps — additional driver management on bookings, full booking detail page, avatar upload, car branch transfer dialog, SMTP settings in Settings page, notification preferences in profile, tags inline panels on cars + customers
+
+**Files touched:**
+- `apps/backend/src/modules/bookings/bookings.service.ts` — Added addDriver(), removeDriver(); extended BOOKING_SELECT with additionalDrivers + inspections; confirm() calls emailService.sendBookingConfirmation() fire-and-forget
+- `apps/backend/src/modules/bookings/bookings.controller.ts` — Added POST /:id/drivers, DELETE /:id/drivers/:driverId
+- `apps/backend/src/modules/email/email.service.ts` — New: EmailService with getTransporter() (reads smtp.* settings from DB via PrismaService), send(), sendBookingConfirmation(), sendInvoiceNotification(), sendRefundNotification()
+- `apps/backend/src/modules/email/email.module.ts` — New: @Global() EmailModule
+- `apps/backend/src/modules/tags/tags.service.ts` — New: list, create, delete, assignToCar, removeFromCar, assignToCustomer, removeFromCustomer
+- `apps/backend/src/modules/tags/tags.controller.ts` — New: GET /tags, POST /tags, DELETE /tags/:id, POST /tags/cars/:carId, DELETE /tags/cars/:carId/:tagId, POST /tags/customers/:customerId, DELETE /tags/customers/:customerId/:tagId
+- `apps/backend/src/modules/tags/tags.module.ts` — New
+- `apps/backend/src/modules/profile/profile.controller.ts` — Added POST /profile/avatar (FileInterceptor, memoryStorage, 5MB limit)
+- `apps/backend/src/modules/profile/profile.service.ts` — Added uploadAvatar() — writes file to uploads/avatars/, updates user.avatarKey
+- `apps/backend/src/app.module.ts` — Added TagsModule, EmailModule
+- `apps/frontend/src/lib/api.ts` — Added Tag interface + tagsApi; AdditionalDriver + BookingInspection interfaces; updated Booking interface (additionalDrivers, inspections, modifications, licenseSnapshot, etc.); bookingsApi.addDriver/removeDriver; profileApi.uploadAvatar; settingsApi (getAll, set, setMany); Car.tags + Customer.tags fields
+- `apps/frontend/src/components/ui/data-table/data-table.tsx` — Added onRowClick prop
+- `apps/frontend/src/app/(dashboard)/bookings/bookings-client.tsx` — Added onRowClick to navigate to /bookings/:id
+- `apps/frontend/src/app/(dashboard)/bookings/[id]/page.tsx` — New
+- `apps/frontend/src/app/(dashboard)/bookings/[id]/booking-detail-client.tsx` — New: full booking detail page with vehicle/customer/dates/financials/extras/modifications timeline/inspections/notes sections + DriversPanel (add/remove) + QuickActions (confirm/cancel)
+- `apps/frontend/src/app/(dashboard)/profile/profile-client.tsx` — Added avatar file input onChange handler (uploads via profileApi.uploadAvatar); NotificationPrefsTab (8 toggles, saves via profileApi.update); Notifications tab
+- `apps/frontend/src/app/(dashboard)/system/settings/settings-client.tsx` — Added EmailTab (SMTP host/port/TLS/user/pass/from/fromName form, hydrated from settingsApi.getAll, saved via settingsApi.setMany); Email is now the first/default tab
+- `apps/frontend/src/app/(dashboard)/cars/cars-client.tsx` — Added car transfer dialog (branch AsyncCombobox + notes; calls carsApi.transfer); TransferButton in row actions; TagsPanel inline component; tag assign/remove mutations
+- `apps/frontend/src/app/(dashboard)/customers/customers-client.tsx` — Added TagsPanel component; tag assign/remove mutations; TagsPanel in Notes tab of edit sheet
+
+**Tests:** N/A
+**Migration:** No — all required models (Tag, CarTag, CustomerTag, AdditionalDriver) already in schema
+
+**Notes:**
+- EmailModule is @Global() — EmailService can be injected anywhere without re-importing the module
+- SMTP config is stored as key-value settings (smtp.host, smtp.port, etc.) — no dedicated table
+- Avatar stored locally at uploads/avatars/{userId}.{ext} in dev — not S3 (S3 integration is a post-v1 enhancement)
+- Tags panel only shows in edit mode (not create) — needs existing entity ID to assign/remove tags
+- Car row action buttons use e.stopPropagation() to prevent onRowClick from firing when clicking edit/transfer/delete
+- TagsPanel in cars-client calls useQueryClient() (needed for cache invalidation) — imported from @tanstack/react-query at file top
+- settingsApi uses PATCH (not PUT) to match backend @Patch(':key') controller decorator
+
+**Commit:** TBD
+**PR:** TBD

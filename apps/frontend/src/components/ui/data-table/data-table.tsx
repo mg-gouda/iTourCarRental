@@ -39,6 +39,7 @@ interface DataTableProps<TData, TValue> {
   toolbar?: React.ReactNode;
   enableRowSelection?: boolean;
   bulkActions?: BulkAction[];
+  onRowClick?: (row: TData) => void;
 }
 
 export function DataTable<TData extends { id?: string }, TValue>({
@@ -54,6 +55,7 @@ export function DataTable<TData extends { id?: string }, TValue>({
   toolbar,
   enableRowSelection,
   bulkActions,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -202,7 +204,8 @@ export function DataTable<TData extends { id?: string }, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() ? 'selected' : undefined}
-                  className={cn(row.getIsSelected() && 'bg-primary/5')}
+                  className={cn(row.getIsSelected() && 'bg-primary/5', onRowClick && 'cursor-pointer')}
+                  onClick={() => onRowClick?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

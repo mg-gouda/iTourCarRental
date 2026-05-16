@@ -42,6 +42,8 @@ import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module
 import { SavedViewsModule } from './modules/saved-views/saved-views.module';
 import { ImportModule } from './modules/import/import.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { TagsModule } from './modules/tags/tags.module';
+import { EmailModule } from './modules/email/email.module';
 
 @Module({
   imports: [
@@ -89,6 +91,8 @@ import { ProfileModule } from './modules/profile/profile.module';
     SavedViewsModule,
     ImportModule,
     ProfileModule,
+    TagsModule,
+    EmailModule,
   ],
   providers: [
     // Global guards — run on every route

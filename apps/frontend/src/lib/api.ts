@@ -200,6 +200,11 @@ export const profileApi = {
     }),
   getSessions: () => api.get<Array<{ id: string; device: string | null; ip: string | null; userAgent: string | null; createdAt: string; lastActiveAt: string; isCurrent: boolean }>>('/auth/sessions'),
   revokeSession: (sessionId: string) => api.delete<void>(`/auth/sessions/${sessionId}`),
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.postForm<{ avatarUrl: string }>('/profile/avatar', form);
+  },
 };
 
 export const permissionsApi = {
@@ -302,6 +307,7 @@ export interface Car {
   updatedAt: string;
   category: { id: string; name: string };
   homeBranch: { id: string; name: string };
+  tags: { tag: { id: string; name: string; color: string | null } }[];
   _count: { photos: number; bookings: number };
 }
 
@@ -402,6 +408,7 @@ export interface Customer {
   updatedAt: string;
   corporateAccount: { id: string; name: string } | null;
   licenses: DriverLicense[];
+  tags: { tag: { id: string; name: string; color: string | null } }[];
   _count: { bookings: number };
 }
 
@@ -594,6 +601,22 @@ export interface BookingExtra {
   total: string;
 }
 
+export interface AdditionalDriver {
+  id: string;
+  fullName: string;
+  age: number;
+  phone: string | null;
+}
+
+export interface BookingInspection {
+  id: string;
+  kind: 'PICKUP' | 'RETURN';
+  performedAt: string;
+  mileage: number | null;
+  fuelLevel: number | null;
+  notes: string | null;
+}
+
 export interface Booking {
   id: string;
   bookingNumber: string;
@@ -611,15 +634,24 @@ export interface Booking {
   priceSnapshot: PriceBreakdown | null;
   notes: string | null;
   cancellationReason: string | null;
+  internalNotes: string | null;
+  visibleNotes: string | null;
+  licenseSnapshot: unknown;
+  totalAmount: string | null;
+  currency: string;
   createdAt: string;
   updatedAt: string;
   car: { id: string; make: string; model: string; year: number; licensePlate: string; category: { id: string; name: string } };
   customer: { id: string; fullName: string; email: string | null; phone: string; flag: string | null };
   corporateAccount: { id: string; name: string } | null;
-  pickupBranch: { id: string; name: string };
-  returnBranch: { id: string; name: string };
+  pickupBranch: { id: string; name: string; code: string };
+  returnBranch: { id: string; name: string; code: string };
   ratePlan: { id: string; name: string } | null;
   extras: BookingExtra[];
+  additionalDrivers: AdditionalDriver[];
+  inspections: BookingInspection[];
+  modifications: { id: string; kind: string; createdAt: string; newTotal: string | null }[];
+  _count: { payments: number; invoices: number };
   createdBy: { id: string; fullName: string } | null;
 }
 
@@ -710,6 +742,10 @@ export const bookingsApi = {
     if (branchId) q.set('branchId', branchId);
     return api.get<CalendarEntry[]>(`/bookings/calendar?${q}`);
   },
+  addDriver: (bookingId: string, dto: { fullName: string; age: number; phone?: string }) =>
+    api.post<AdditionalDriver>(`/bookings/${bookingId}/drivers`, dto),
+  removeDriver: (bookingId: string, driverId: string) =>
+    api.delete<void>(`/bookings/${bookingId}/drivers/${driverId}`),
 };
 
 // ─── Payment types ────────────────────────────────────────────────────────────
@@ -1309,6 +1345,33 @@ export const importApi = {
     form.append('file', file);
     return api.postForm<ImportResult>('/import/customers', form);
   },
+};
+
+// ─── Settings ─────────────────────────────────────────────────────────────────────
+
+export const settingsApi = {
+  getAll: () => api.get<Record<string, unknown>>('/settings'),
+  set: (key: string, value: unknown) =>
+    api.patch<{ key: string; value: unknown }>(`/settings/${encodeURIComponent(key)}`, { value }),
+  setMany: async (entries: Record<string, unknown>) => {
+    for (const [key, value] of Object.entries(entries)) {
+      await api.patch(`/settings/${encodeURIComponent(key)}`, { value });
+    }
+  },
+};
+
+// ─── Tags ────────────────────────────────────────────────────────────────────────
+
+export interface Tag { id: string; name: string; color: string | null; }
+
+export const tagsApi = {
+  list: () => api.get<Tag[]>('/tags'),
+  create: (name: string, color?: string) => api.post<Tag>('/tags', { name, color }),
+  delete: (id: string) => api.delete<void>(`/tags/${id}`),
+  assignToCar: (carId: string, tagId: string) => api.post<void>(`/tags/cars/${carId}`, { tagId }),
+  removeFromCar: (carId: string, tagId: string) => api.delete<void>(`/tags/cars/${carId}/${tagId}`),
+  assignToCustomer: (customerId: string, tagId: string) => api.post<void>(`/tags/customers/${customerId}`, { tagId }),
+  removeFromCustomer: (customerId: string, tagId: string) => api.delete<void>(`/tags/customers/${customerId}/${tagId}`),
 };
 
 // ─── Audit log types ────────────────────────────────────────────────────────────

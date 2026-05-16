@@ -7,8 +7,12 @@ import {
 import * as argon2 from 'argon2';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { UpdateProfileDto, ChangePasswordDto, Disable2faDto } from './dto/profile.dto';
+
+const AVATARS_DIR = path.join(process.cwd(), 'uploads', 'avatars');
 
 const APP_NAME = 'iTour Car Rental';
 
@@ -120,6 +124,22 @@ export class ProfileService {
       where: { id: userId },
       data: { twoFactorEnabled: true },
     });
+  }
+
+  async uploadAvatar(userId: string, file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file provided');
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.mimetype)) throw new BadRequestException('Invalid file type');
+
+    if (!fs.existsSync(AVATARS_DIR)) fs.mkdirSync(AVATARS_DIR, { recursive: true });
+
+    const ext = file.originalname.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const key = `avatars/${userId}.${ext}`;
+    const dest = path.join(process.cwd(), 'uploads', key);
+    fs.writeFileSync(dest, file.buffer);
+
+    await this.prisma.user.update({ where: { id: userId }, data: { avatarKey: key } });
+    return { avatarUrl: `/uploads/${key}` };
   }
 
   async disable2fa(userId: string, dto: Disable2faDto) {
