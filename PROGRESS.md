@@ -409,5 +409,5 @@ pnpm dev:down
 - SavedView Prisma model and migration already in schema from Phase 1 — no new migration needed
 - API key: only the create response includes the plaintext `key` field; subsequent list/get never return it
 
-**Commit:** TBD
-**PR:** TBD
+**Commit:** 676015b
+**PR:** TBD — push branch then: `gh pr create --base main --title "feat(p6): Phase 6 — Insights & Integrations"`
