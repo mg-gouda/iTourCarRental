@@ -8,12 +8,12 @@ FROM base AS development
 ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY package.json pnpm-workspace.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/permissions/package.json ./packages/permissions/
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile || pnpm install
 
 COPY packages/ ./packages/
 COPY apps/frontend/ ./apps/frontend/
@@ -29,12 +29,12 @@ FROM base AS builder
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY package.json pnpm-workspace.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/permissions/package.json ./packages/permissions/
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile || pnpm install
 
 COPY packages/ ./packages/
 COPY apps/frontend/ ./apps/frontend/

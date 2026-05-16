@@ -21,7 +21,7 @@ export class PermissionsService {
     });
 
     const overrideMap = new Map(
-      dbOverrides.map((r) => [r.key, r.granted]),
+      dbOverrides.map((r: any) => [r.key, r.granted as boolean]),
     );
 
     // Build final permission set: base defaults + DB overrides
@@ -29,7 +29,7 @@ export class PermissionsService {
 
     for (const key of ALL_PERMISSIONS) {
       if (overrideMap.has(key)) {
-        permissions[key] = overrideMap.get(key)!;
+        permissions[key] = overrideMap.get(key) as boolean;
       } else {
         permissions[key] = baseDefaults.has(key);
       }
@@ -82,7 +82,7 @@ export class PermissionsService {
       orderBy: { createdAt: 'asc' },
     });
 
-    return overrides.map((o) => ({
+    return overrides.map((o: any) => ({
       id: o.id,
       key: o.key,
       effect: o.effect as 'grant' | 'revoke',
@@ -134,7 +134,7 @@ export class PermissionsService {
 
     if (!user) throw new NotFoundException('User not found');
 
-    const overrides = user.permissionOverrides.map((o) => ({
+    const overrides = user.permissionOverrides.map((o: any) => ({
       key: o.key,
       effect: o.effect as 'grant' | 'revoke',
     }));

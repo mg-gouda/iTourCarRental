@@ -20,6 +20,30 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { StylingModule } from './modules/styling/styling.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { LookupModule } from './modules/lookup/lookup.module';
+import { CarsModule } from './modules/cars/cars.module';
+import { InsuranceModule } from './modules/insurance/insurance.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { CorporateAccountsModule } from './modules/corporate-accounts/corporate-accounts.module';
+import { RatePlansModule } from './modules/rate-plans/rate-plans.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { InvoicesModule } from './modules/invoices/invoices.module';
+import { RefundsModule } from './modules/refunds/refunds.module';
+import { DamageFinesModule } from './modules/damage-fines/damage-fines.module';
+import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { VendorsModule } from './modules/vendors/vendors.module';
+import { PartsModule } from './modules/parts/parts.module';
+import { AccidentsModule } from './modules/accidents/accidents.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { ApiKeysModule } from './modules/api-keys/api-keys.module';
+import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module';
+import { SavedViewsModule } from './modules/saved-views/saved-views.module';
+import { ImportModule } from './modules/import/import.module';
+import { ProfileModule } from './modules/profile/profile.module';
+import { TagsModule } from './modules/tags/tags.module';
+import { EmailModule } from './modules/email/email.module';
 
 @Module({
   imports: [
@@ -45,6 +69,30 @@ import { LookupModule } from './modules/lookup/lookup.module';
     StylingModule,
     SettingsModule,
     LookupModule,
+    CarsModule,
+    InsuranceModule,
+    CustomersModule,
+    CorporateAccountsModule,
+    RatePlansModule,
+    BookingsModule,
+    PaymentsModule,
+    InvoicesModule,
+    RefundsModule,
+    DamageFinesModule,
+    MaintenanceModule,
+    VendorsModule,
+    PartsModule,
+    AccidentsModule,
+    ReportsModule,
+    NotificationsModule,
+    WebhooksModule,
+    ApiKeysModule,
+    FeatureFlagsModule,
+    SavedViewsModule,
+    ImportModule,
+    ProfileModule,
+    TagsModule,
+    EmailModule,
   ],
   providers: [
     // Global guards — run on every route

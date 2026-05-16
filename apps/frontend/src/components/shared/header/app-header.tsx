@@ -2,18 +2,21 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import { Menu, Bell, Sun, Moon, Monitor, LogOut, User, ChevronDown } from 'lucide-react';
+import { Menu, Bell, Sun, Moon, Monitor, LogOut, User, ChevronDown, Check, Trash2, Search } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { initials } from '@/lib/utils';
 import Link from 'next/link';
 import { useState } from 'react';
+import { notificationsApi, AppNotification } from '@/lib/api';
 
 interface AppHeaderProps {
   onToggleSidebar: () => void;
+  onOpenCommandPalette?: () => void;
   title?: string;
 }
 
-export function AppHeader({ onToggleSidebar, title }: AppHeaderProps) {
+export function AppHeader({ onToggleSidebar, onOpenCommandPalette, title }: AppHeaderProps) {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const t = useTranslations('common');
@@ -22,6 +25,42 @@ export function AppHeader({ onToggleSidebar, title }: AppHeaderProps) {
   const user = session?.user as { name?: string; email?: string; role?: string } | undefined;
   const userName = user?.name ?? 'User';
   const userInitials = initials(userName);
+
+  const qc = useQueryClient();
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const { data: notifications } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationsApi.list(false),
+    refetchInterval: 30_000,
+  });
+
+  const unreadCount = notifications?.filter((n) => !n.readAt).length ?? 0;
+
+  const { mutate: markRead } = useMutation({
+    mutationFn: (id: string) => notificationsApi.markRead(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+
+  const { mutate: markAllRead } = useMutation({
+    mutationFn: () => notificationsApi.markAllRead(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+
+  const { mutate: deleteNotif } = useMutation({
+    mutationFn: (id: string) => notificationsApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+
+  function notifTitle(n: AppNotification) {
+    const titles: Record<string, string> = {
+      BOOKING_CONFIRMED: 'Booking confirmed',
+      PAYMENT_RECORDED: 'Payment recorded',
+      MAINTENANCE_COMPLETED: 'Maintenance completed',
+      BOOKING_CANCELLED: 'Booking cancelled',
+    };
+    return titles[n.kind] ?? n.kind.replace(/_/g, ' ').toLowerCase();
+  }
 
   const themeIcons = {
     light: <Sun className="h-4 w-4" />,
@@ -48,6 +87,19 @@ export function AppHeader({ onToggleSidebar, title }: AppHeaderProps) {
         <h1 className="text-sm font-semibold text-foreground truncate">{title}</h1>
       )}
 
+      {/* Command palette trigger */}
+      {onOpenCommandPalette && (
+        <button
+          onClick={onOpenCommandPalette}
+          className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          aria-label="Open command palette"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span>Search…</span>
+          <kbd className="ml-1 rounded border border-border px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+        </button>
+      )}
+
       <div className="flex-1" />
 
       {/* Theme toggle */}
@@ -60,14 +112,72 @@ export function AppHeader({ onToggleSidebar, title }: AppHeaderProps) {
       </button>
 
       {/* Notifications */}
-      <button
-        className="relative rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        aria-label="Notifications"
-      >
-        <Bell className="h-4 w-4" />
-        {/* unread badge */}
-        <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-primary" />
-      </button>
+      <div className="relative">
+        <button
+          onClick={() => setNotifOpen((v) => !v)}
+          className="relative rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          aria-label="Notifications"
+        >
+          <Bell className="h-4 w-4" />
+          {unreadCount > 0 && (
+            <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </button>
+
+        {notifOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setNotifOpen(false)} />
+            <div className="absolute right-0 top-full z-20 mt-1 w-80 rounded-xl border border-border bg-popover shadow-lg animate-fade-in overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+                <span className="text-sm font-semibold text-foreground">Notifications</span>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllRead()}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-80 overflow-y-auto">
+                {!notifications?.length && (
+                  <div className="py-8 text-center text-xs text-muted-foreground">All caught up!</div>
+                )}
+                {notifications?.map((n) => (
+                  <div
+                    key={n.id}
+                    className={`flex items-start gap-2 px-3 py-2.5 border-b border-border/50 last:border-0 transition-colors ${!n.readAt ? 'bg-primary/5' : ''}`}
+                  >
+                    {!n.readAt && <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />}
+                    {n.readAt && <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground capitalize">{notifTitle(n)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        {typeof n.payload === 'object' && n.payload !== null && 'message' in n.payload
+                          ? String((n.payload as Record<string, unknown>).message)
+                          : JSON.stringify(n.payload)}
+                      </p>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-1">
+                      {!n.readAt && (
+                        <button onClick={() => markRead(n.id)} className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground">
+                          <Check className="h-3 w-3" />
+                        </button>
+                      )}
+                      <button onClick={() => deleteNotif(n.id)} className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* User menu */}
       <div className="relative">

@@ -59,8 +59,41 @@ pnpm dev:down
 **Tests:** N/A
 **Migration:** N/A
 **Notes:** Specs written; code not yet started.
-**Commit:** —
-**PR:** —
+**Commit:** fe5ae66
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/new/feat/p1-phase1-ui
+
+---
+
+## [2026-05-15 12:00] Auth Fix — Direct Browser Login + Credential Reset + Phase 2 Modules
+
+**Phase:** Phase 1 fix + Phase 2 start
+**Scope:** Fix auth flow (browser→backend direct fetch); reset admin credentials; add Cars/Customers/Corporate Accounts/Insurance backend modules
+
+**Files touched:**
+- `.env.example` — `SEED_ADMIN_EMAIL=mggouda@gmail.com`, `SEED_ADMIN_PASSWORD=Win16@64`
+- `apps/backend/prisma/seed.ts` — Reset defaults to mggouda@gmail.com / Win16@64; added stale super-admin cleanup before upsert
+- `apps/frontend/src/lib/auth.ts` — Rewrote: Auth.js is now purely a JWT/session store; `authorize()` just parses `_user` JSON — no backend call
+- `apps/frontend/src/app/(auth)/login/page.tsx` — Login page calls `POST /api/v1/auth/login` directly from browser with `credentials: 'include'` so browser receives `sid` httpOnly cookie; passes user object to `signIn('credentials', { _user })` for JWT storage
+- `apps/backend/src/modules/cars/` — New: CarsModule, CarsService, CarsController (CRUD + list/search), CreateCarDto
+- `apps/backend/src/modules/customers/` — New: CustomersModule, CustomersService, CustomersController, CustomerDto
+- `apps/backend/src/modules/corporate-accounts/` — New: full CRUD module
+- `apps/backend/src/modules/insurance/` — New: InsurancePoliciesModule
+- `apps/backend/src/modules/lookup/lookup.controller.ts` — Extended: cars + customers + corporate-accounts lookup endpoints
+- `apps/backend/src/app.module.ts` — Wired all new modules
+- `apps/frontend/src/lib/api.ts` — Expanded: typed helpers for cars, customers, corporate accounts, insurance
+- `apps/frontend/src/app/(dashboard)/cars/page.tsx` + `cars-client.tsx` — Scaffolded cars list with DataTable
+- `apps/frontend/src/app/(dashboard)/customers/page.tsx` — Scaffolded customers list
+
+**Tests:** N/A
+**Migration:** No new migrations (new modules use existing Prisma schema)
+
+**Notes:**
+- The core auth bug: original `auth.ts` called backend server-side — the `sid` cookie went to the Next.js server process, not the browser. Fix: login page calls backend directly from browser.
+- Admin credentials: `mggouda@gmail.com` / `Win16@64` — takes effect on next `pnpm dev:up` (seed re-runs on container start)
+- To verify login: `pnpm dev:up`, open http://localhost:3000, sign in with `mggouda@gmail.com` / `Win16@64`
+
+**Commit:** 6245271
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/new/feat/p1-phase1-ui
 
 ---
 
@@ -89,3 +122,400 @@ pnpm dev:down
 
 **Commit:** 8653378
 **PR:** https://github.com/mg-gouda/iTourCarRental/pull/new/feat/p1-monorepo-foundation
+
+---
+
+## [2026-05-15] Phase 1 — UI Implementation (Branches, Staff, Permissions, Profile)
+
+**Phase:** Phase 1 — Foundation
+**Scope:** Full implementation of Branches CRUD, Staff CRUD, Permissions management, and Profile pages with live API calls
+**Files touched:**
+- `apps/frontend/src/components/ui/` — Button, Input, Label, Badge, Card, Dialog, Sheet, Table, Separator, Switch, Tabs, Avatar, DropdownMenu, Toaster (rebuilt), Combobox, AsyncCombobox, DataTable
+- `apps/frontend/src/lib/api.ts` — Extended with domain types + typed helpers for branches, users, profile, permissions, lookup
+- `apps/frontend/src/lib/hooks/use-debounce.ts` — New hook
+- `apps/frontend/src/lib/hooks/use-toast.ts` — New global toast store
+- `apps/frontend/src/app/(dashboard)/branches/` — Full CRUD with DataTable + Sheet form + delete dialog
+- `apps/frontend/src/app/(dashboard)/staff/` — Full CRUD with role/branch Combobox selectors + avatar initials + reset-password dialog
+- `apps/frontend/src/app/(dashboard)/system/permissions/` — Role matrix (toggle grid) + per-user overrides tab with add/remove
+- `apps/frontend/src/app/(dashboard)/profile/` — Tabs: Profile info, Change password, 2FA setup/disable, Active sessions with revoke
+- `apps/frontend/package.json` — Added `@tanstack/react-table ^8.21.3`; fixed `next-intl` to `^3.26.5`
+
+**Tests:** N/A
+**Migration:** No new migrations
+
+**Notes:**
+- All dropdowns use Combobox/AsyncCombobox — no plain `<select>` anywhere
+- DataTable: server-side pagination + client-side sort/filter; loading skeleton via animated rows
+- Permissions page: matrix is read-only for SUPER_ADMIN (always granted), live toggle for all other roles; user overrides tab has an AsyncCombobox user picker
+- Profile 2FA: setup flow shows secret + QR placeholder, verify code to enable; disable requires current password
+- Sessions tab shows device/IP/last-active with revoke buttons (current session protected)
+- Backend fix committed to `feat/p1-monorepo-foundation`: tightened permission guard, auth service, users controller; added `express.d.ts` type declaration
+
+**Commit:** 30887a3
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/new/feat/p1-phase1-ui
+
+---
+
+## [2026-05-15 11:18] Docker Dev Stack — Full Startup Fix
+
+**Phase:** Infrastructure (pre-Phase-2)
+**Scope:** Fix all Docker startup blockers so `pnpm dev:up` brings the full stack up clean
+**Files touched:**
+- `apps/backend/Dockerfile` — Install `@nestjs/cli@11 @swc/core @swc/cli chokidar` globally via npm so NestJS CLI can load SWC from its own module search path; add `npx tsc` steps to compile workspace packages before starting backend
+- `apps/backend/.swcrc` — Removed `paths` (NestJS CLI injects paths from tsconfig; having them in .swcrc too caused double-processing)
+- `apps/backend/tsconfig.build.json` — Set `"paths": {}` to prevent NestJS CLI from passing TypeScript path aliases to SWC (aliases compiled to broken relative paths at runtime); workspace package resolution now happens via pnpm symlinks → `packages/*/dist/`
+- `apps/backend/src/common/guards/auth.guard.ts` — `import type` for express
+- `apps/backend/src/common/guards/permission.guard.ts` — `import type` for express
+- `apps/backend/src/modules/auth/auth.controller.ts` — `import type` for express
+- `apps/backend/src/common/filters/http-exception.filter.ts` — `import type` for express
+- `apps/backend/src/common/interceptors/audit.interceptor.ts` — `import type` for express
+- `packages/permissions/src/index.ts` — Replaced `require('./role-defaults')` dynamic require with static import (was causing TS2580 in Docker where `@types/node` isn't in the package's own devDeps)
+- `packages/shared-types/src/` + `packages/permissions/src/` — Removed stale pre-compiled `.js` / `.js.map` files that had leaked into `src/`
+
+**Tests:** Manual — `curl http://localhost:4000/api/v1/health` returns `{"data":{"status":"ok"}}`; frontend at `:3000` serves login redirect
+**Migration:** None
+
+**Notes:**
+- Root cause of the SWC resolution failure: pnpm's virtual-store layout doesn't create a `node_modules/@swc/core` symlink accessible to the globally-installed `nest` CLI (which resolves modules from `/usr/local/lib/node_modules/@nestjs/cli/`, not from the project root). Solution: install SWC globally alongside the CLI.
+- Root cause of the path alias failure: NestJS CLI reads `tsconfig.build.json` paths via `tsOptions.paths` and injects them into SWC opts (see `swc-defaults.js:L28`). SWC then compiles `@car-rental/permissions` → `../../../../../packages/permissions/src` which doesn't exist at runtime. Fix: set `"paths": {}` in `tsconfig.build.json` so workspace packages are resolved via pnpm symlinks instead.
+- Stack: backend `:4000`, frontend `:3000`, postgres `:5434`, redis, mailhog `:8025`
+
+**Commit:** fe5ae66
+**PR:** —
+
+---
+
+## [2026-05-15] Phase 2 — Fleet & Customers Frontend Pages
+
+**Phase:** Phase 2 — Fleet & Customers
+**Scope:** Frontend CRUD pages for Cars, Customers, and Corporate Accounts; icon library fix (heroicons → lucide-react)
+**Files touched:**
+- `apps/frontend/src/app/(dashboard)/cars/cars-client.tsx` — Fixed icons (heroicons → lucide-react): Plus, Pencil, Trash2, ArrowLeftRight
+- `apps/frontend/src/app/(dashboard)/customers/customers-client.tsx` — New: tabbed Sheet (Info/License/Notes), flag badges, AsyncCombobox for corporate account
+- `apps/frontend/src/app/(dashboard)/corporate-accounts/corporate-accounts-client.tsx` — New: CRUD with credit limit/currency display
+- `apps/frontend/src/app/(dashboard)/corporate-accounts/page.tsx` — Updated to import CorporateAccountsClient
+
+**Tests:** N/A
+**Migration:** None
+
+**Notes:**
+- All three pages use lucide-react icons (project standard — @heroicons/react is NOT installed)
+- Customers form uses tabbed Sheet: Info tab (personal details, source, flag, corporate link), License tab (primary license on create only), Notes tab (visible + internal notes)
+- All dropdowns are Combobox/AsyncCombobox per Tech Rule 1 — no plain selects
+
+**Commit:** 6830dca
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/1
+
+---
+
+## [2026-05-15] Phase 3 — Bookings & Pricing (Backend + Frontend)
+
+**Phase:** Phase 3 — Bookings & Pricing
+**Scope:** Full booking lifecycle backend (rate plans, pricing engine, state machine) + Bookings list + Create booking sheet + Calendar view
+
+**Files touched:**
+- `apps/backend/prisma/seed.ts` — Added: default extras (GPS, child seat, additional driver, basic/full insurance), Cairo Default rate plan with rules per category, branch pricing settings (young driver threshold, late return grace); booking overlap constraint (graceful fallback if btree_gist unavailable); fixed variable name conflict; fixed `ts-node` invocation path
+- `apps/backend/src/modules/rate-plans/` — New: `RatePlansModule`, `RatePlansService`, `RatePlansController`, `dto/rate-plan.dto.ts` — full CRUD for rate plans, rate rules, extras, extra prices
+- `apps/backend/src/modules/bookings/pricing.service.ts` — New: 11-step pricing engine per PRICING.md (rate plan resolution, base rental tiers with weekly/monthly, extras, cross-branch fee, mileage overage, late return, age surcharges, fuel charge, discounts, tax, rounding); uses `Prisma.Decimal` throughout
+- `apps/backend/src/modules/bookings/bookings.service.ts` — New: full booking state machine (HOLD→CONFIRMED→ACTIVE→COMPLETED + CANCELLED/NO_SHOW); quote(), list(), get(), create(), confirm(), cancel(), checkin(), checkout(), update(), delete(), calendar()
+- `apps/backend/src/modules/bookings/bookings.controller.ts` — New: all booking routes; fixed double-prefix (`api/v1/bookings` → `bookings`)
+- `apps/backend/src/modules/bookings/dto/booking.dto.ts` — New: CreateBookingDto, UpdateBookingDto, CancelBookingDto, CheckinDto, CheckoutDto, QuoteDto
+- `apps/backend/src/modules/bookings/bookings.module.ts` — New
+- `apps/backend/src/modules/lookup/lookup.controller.ts` — Extended: rate-plans, extras, available-cars lookup endpoints
+- `apps/backend/src/modules/cars/cars.service.ts` — Fixed: `CHECKED_OUT` → `ACTIVE` status
+- `apps/backend/src/modules/customers/customers.service.ts` — Fixed: `startAt/endAt` → `pickupAt/returnAt`, `expiryDate` → `expiryAt`, `licenseNumber` → `number`, `issuingCountry` → `country`, `CHECKED_OUT` → `ACTIVE`
+- `apps/backend/src/modules/customers/dto/customer.dto.ts` — Fixed: `AdditionalDriverDto` now has `age: number` (model field) not `dateOfBirth`
+- `apps/backend/src/modules/rate-plans/rate-plans.controller.ts` — Fixed: double-prefix (`api/v1` → ``)
+- `apps/frontend/src/lib/api.ts` — Extended: RatePlan, Extra, RateRule, Booking, PriceBreakdown, CalendarEntry types + ratePlansApi, bookingsApi helpers; extended lookupApi with ratePlans, extras, availableCars
+- `apps/frontend/src/app/(dashboard)/bookings/bookings-client.tsx` — New: DataTable with status badges + filters; multi-step Create Booking sheet (customer→car→dates→options→quote); inline Confirm/Cancel actions; QuotePreview component; CancelDialog
+- `apps/frontend/src/app/(dashboard)/bookings/page.tsx` — Updated stub to real page
+- `apps/frontend/src/app/(dashboard)/calendar/calendar-client.tsx` — New: weekly Gantt timeline grouped by car with hover tooltips, today highlight, week navigation
+- `apps/frontend/src/app/(dashboard)/calendar/page.tsx` — Updated stub to real page
+- `apps/frontend/src/app/(dashboard)/cars/cars-client.tsx` — Fixed: Combobox `onChange` → `onValueChange`; pagination refactored to `PaginationState`
+- `apps/frontend/src/app/(dashboard)/customers/customers-client.tsx` — Same fixes
+- `apps/frontend/src/app/(dashboard)/corporate-accounts/corporate-accounts-client.tsx` — Same pagination fixes
+- `apps/frontend/src/app/(dashboard)/branches/branches-client.tsx` — Fixed: imported `UpdateBranchDto`; null→undefined sanitization on `defaultValues`
+- `apps/frontend/src/app/(dashboard)/staff/staff-client.tsx` — Fixed: `fetchBranches` returns `AsyncOption[]` format
+- `apps/frontend/src/app/(dashboard)/system/permissions/permissions-client.tsx` — Fixed: `fetchUsers` returns `AsyncOption[]` format
+- `apps/frontend/src/lib/auth.ts` — Fixed: duplicate property spread in authorize()
+
+**Tests:** N/A
+**Migration:** No new Prisma migrations (seed adds data only)
+
+**Notes:**
+- Booking overlap exclusion constraint skipped in seed (PostgreSQL `tstzrange` IMMUTABLE issue in Docker env) — enforced at service layer with `ConflictException`
+- Pricing engine: all amounts in `Prisma.Decimal`, never float; serialized to strings in JSON snapshot
+- Create booking is a 3-step sheet: Step 1 (customer+car+dates+branches+driverAge) → Step 2 (fuelPolicy+mileage+notes) → Step 3 (quote preview + confirm)
+- Calendar groups bookings by car, 1-week window, Mon–Sun, forward/back navigation, today button
+- `DriverLicense` schema uses `number` (not `licenseNumber`), `country` (not `issuingCountry`), `expiryAt` (not `expiryDate`) — DTO field names differ from DB
+
+**Commit:** 588fda6
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/2
+
+---
+
+## [2026-05-16] Phase 4 — Money (Payments, Invoices, Refunds, Damage & Fines)
+
+**Phase:** Phase 4 — Money
+**Scope:** Full Payments, Invoices, Refunds, and Damage & Fines modules (backend + frontend)
+
+**Files touched:**
+- `apps/backend/src/modules/payments/` — New: PaymentsModule, PaymentsService (idempotency, void), PaymentsController, dto/payment.dto.ts
+- `apps/backend/src/modules/invoices/` — New: InvoicesModule, InvoicesService (invoice generation from priceSnapshot, invoice numbering, credit notes), InvoicesController, dto/invoice.dto.ts
+- `apps/backend/src/modules/refunds/` — New: RefundsModule, RefundsService (two-person rule, cancellation policy tiers, auto-approve below threshold), RefundsController, dto/refund.dto.ts
+- `apps/backend/src/modules/damage-fines/` — New: DamageFinesModule, DamageFinesService, DamageFinesController, dto/damage-fine.dto.ts
+- `apps/backend/src/modules/lookup/lookup.controller.ts` — Extended: `GET /lookup/bookings` for async combo-box booking search
+- `apps/backend/src/modules/bookings/bookings.service.ts` — Fixed: `Prisma.InputJsonValue` → `InputJsonValue` from runtime/library; `Prisma.BookingWhereInput` → plain `Record<string, unknown>`; implicit `any` in callbacks
+- `apps/backend/src/modules/bookings/pricing.service.ts` — Fixed: `Prisma.Decimal` → `Decimal` from runtime/library; implicit `any` in callbacks
+- `apps/backend/src/modules/cars/cars.service.ts` — Fixed: same `Decimal` import
+- `apps/backend/src/modules/corporate-accounts/corporate-accounts.service.ts` — Same
+- `apps/backend/src/modules/damage-fines/damage-fines.service.ts` — Same
+- `apps/backend/src/modules/insurance/insurance.service.ts` — Same
+- `apps/backend/src/modules/invoices/invoices.service.ts` — Fixed: `InputJsonValue` import
+- `apps/backend/src/modules/customers/customers.service.ts` — Fixed implicit `any` in tx callbacks
+- `apps/backend/src/modules/permissions/permissions.service.ts` — Fixed implicit `any` and `{}` not assignable to `boolean`
+- `apps/backend/src/modules/settings/settings.service.ts` — Fixed implicit `any`
+- `apps/backend/src/common/guards/auth.guard.ts` — Fixed implicit `any`
+- `apps/backend/src/modules/auth/auth.service.ts` — Fixed implicit `any`
+- `apps/backend/src/modules/audit-log/audit-log.service.ts` — Fixed implicit `any`
+- `apps/backend/src/app.module.ts` — Added PaymentsModule, InvoicesModule, RefundsModule, DamageFinesModule
+- `apps/frontend/src/lib/api.ts` — Extended: Payment, Invoice, CreditNote, Refund, DamageRecord, Fine types + paymentsApi, invoicesApi, refundsApi, damageFinesApi; lookupApi.bookings
+- `apps/frontend/src/app/(dashboard)/payments/payments-client.tsx` — New: DataTable + kind filter + Record Payment sheet + Void dialog
+- `apps/frontend/src/app/(dashboard)/payments/page.tsx` — Updated stub to real page
+- `apps/frontend/src/app/(dashboard)/invoices/invoices-client.tsx` — New: DataTable + kind filter + Generate Invoice sheet + Invoice Detail sheet + Credit Note sheet + Void dialog
+- `apps/frontend/src/app/(dashboard)/invoices/page.tsx` — Updated
+- `apps/frontend/src/app/(dashboard)/damage-fines/damage-fines-client.tsx` — New: tabbed Damage/Fines DataTables + Record Damage sheet + Record Fine sheet + Delete confirm dialog
+- `apps/frontend/src/app/(dashboard)/damage-fines/page.tsx` — Updated
+- `apps/frontend/src/components/ui/textarea.tsx` — New: shadcn-style Textarea component
+
+**Tests:** N/A
+**Migration:** No — all Phase 4 Prisma models were already in schema
+
+**Notes:**
+- `Prisma.Decimal` and `Prisma.InputJsonValue` do NOT exist in Prisma 6 with this client setup; use `Decimal` / `InputJsonValue` from `@prisma/client/runtime/library` directly
+- `Prisma.XyzWhereInput` types not exported either — use `any` for where clause types
+- Refunds: auto-approve if amount < `two_person_refund_threshold` setting; two-person rule enforced otherwise (approver ≠ requester)
+- Invoice numbering: `{BRANCH_CODE}-{YEAR}-{0001}` — sequence per branch/year via count() on invoice table
+- `lookupApi.bookings` endpoint added: returns `{ id, bookingNumber, customer: { fullName } }` — used by payment/invoice/damage-fine async comboboxes
+- No PDF generation yet — stubbed as 501 Not Implemented in invoices service
+
+**Commit:** 69c5ab1
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/3
+
+---
+
+## [2026-05-16 00:00] Phase 5 — Maintenance & Operations
+
+**Phase:** 5
+**Scope:** Maintenance records, vendors, parts inventory, and accident reports — full backend + frontend
+
+**Files touched:**
+- `apps/backend/src/modules/maintenance/` — New: MaintenanceModule, MaintenanceService (create/list/get/complete/update/delete; car status transitions IN_MAINTENANCE↔AVAILABLE; parts stock decremented on create), MaintenanceController, dto/maintenance.dto.ts
+- `apps/backend/src/modules/vendors/` — New: VendorsModule, VendorsService (CRUD + soft delete), VendorsController at `maintenance/vendors`
+- `apps/backend/src/modules/parts/` — New: PartsModule, PartsService (CRUD + adjustStock upsert per branch; isLowStock annotation; prevents negative stock), PartsController at `parts`
+- `apps/backend/src/modules/accidents/` — New: AccidentsModule, AccidentsService (CRUD + soft delete; reportedById from session), AccidentsController at `accidents`
+- `apps/backend/src/modules/lookup/lookup.controller.ts` — Extended: `GET /lookup/vendors`, `GET /lookup/parts`
+- `apps/backend/src/app.module.ts` — Added MaintenanceModule, VendorsModule, PartsModule, AccidentsModule
+- `apps/frontend/src/lib/api.ts` — Extended: MaintenanceRecord, Vendor, Part, PartStock, AccidentReport types; maintenanceApi, vendorsApi, partsApi, accidentsApi; lookupApi.vendors, lookupApi.parts
+- `apps/frontend/src/app/(dashboard)/maintenance/maintenance-client.tsx` — New: DataTable + kind filter + Create sheet (car/vendor AsyncCombobox, parts useFieldArray) + Complete confirm dialog
+- `apps/frontend/src/app/(dashboard)/maintenance/page.tsx` — Updated stub
+- `apps/frontend/src/app/(dashboard)/maintenance/vendors/vendors-client.tsx` — New: DataTable + Create/Edit sheet + Delete confirm
+- `apps/frontend/src/app/(dashboard)/maintenance/vendors/page.tsx` — New
+- `apps/frontend/src/app/(dashboard)/parts/parts-client.tsx` — New: DataTable + low-stock filter + Create/Edit sheet + Adjust Stock dialog (per-branch) + Delete confirm
+- `apps/frontend/src/app/(dashboard)/parts/page.tsx` — Updated stub
+- `apps/frontend/src/app/(dashboard)/accidents/accidents-client.tsx` — New: DataTable + Report/Edit sheet (car AsyncCombobox disabled on edit, booking AsyncCombobox) + Delete confirm
+- `apps/frontend/src/app/(dashboard)/accidents/page.tsx` — Updated stub
+
+**Tests:** N/A
+**Migration:** No — all Phase 5 models (MaintenanceRecord, MaintenanceVendor, Part, PartStock, AccidentReport) already in Prisma schema
+
+**Notes:**
+- Maintenance create marks car `IN_MAINTENANCE`; complete marks car `AVAILABLE` — wrapped in `$transaction`
+- Parts stock adjustment uses upsert (branchId + partId unique); service rejects negative resulting stock
+- Vendors use `maintenanceVendor` Prisma model (not `vendor`); controller prefix is `maintenance/vendors`
+- Accidents: `reportedById` injected from session on the backend (`req.session.userId`)
+- lookupApi.vendors and lookupApi.parts return `{ id, name, specialty? }` and `{ id, sku, name, unitCost, currency }` respectively
+- TypeScript: 0 errors after fixing `Omit<CreateAccidentDto, 'carId'>` spread issue in accidents-client
+
+**Commit:** 4d1241d
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/4
+
+---
+
+## [2026-05-16 12:00] Phase 6 — Insights & Integrations
+
+**Phase:** 6
+**Scope:** Reports/analytics, notifications, command palette, bulk operations, CSV import, saved views, webhooks, API keys, feature flags, in-app help page
+
+**Files touched:**
+
+**6a — Reports:**
+- `apps/backend/src/modules/reports/reports.service.ts` — New: 7 report methods (revenue, bookings-by-status, fleet-utilization, top-customers, staff-activity, maintenance-costs, SLA-compliance) using `$queryRawUnsafe` with `as Array<{...}>` cast (Prisma 6 has no type generics on raw queries)
+- `apps/backend/src/modules/reports/reports.controller.ts` — New: 7 GET endpoints under `/reports`
+- `apps/backend/src/modules/reports/reports.module.ts` — New
+- `apps/frontend/src/lib/api.ts` — Extended: ReportSummary type + reportsApi
+- `apps/frontend/src/app/(dashboard)/reports/reports-client.tsx` — New: KPI cards, LineChart (revenue), horizontal BarChart (bookings by status), BarChart (fleet utilization), tables (top customers, staff activity, maintenance costs). COLORS use hardcoded HSL values (project has no `--chart-N` CSS vars)
+- `apps/frontend/src/app/(dashboard)/reports/page.tsx` — Updated stub
+
+**6b — Notifications:**
+- `apps/backend/src/modules/notifications/notifications.service.ts` — New: notify(), list(), countUnread(), markRead(), markAllRead(), delete()
+- `apps/backend/src/modules/notifications/notifications.controller.ts` — New: GET/PATCH/DELETE endpoints
+- `apps/backend/src/modules/notifications/notifications.module.ts` — New: `@Global()` so NotificationsService can be injected anywhere
+- `apps/frontend/src/lib/api.ts` — Extended: AppNotification type + notificationsApi
+- `apps/frontend/src/components/shared/header/app-header.tsx` — Updated: notification bell with unread badge, dropdown to mark read/delete, search bar trigger for command palette
+
+**6c — Power-user features:**
+- `apps/frontend/src/components/shared/command-palette/command-palette.tsx` — New: cmdk-based palette with 22 nav items grouped by section; triggered by Cmd+K or header search bar
+- `apps/frontend/src/app/(dashboard)/layout.tsx` — Updated: useEffect for Cmd+K; renders CommandPalette; passes onOpenCommandPalette to AppHeader
+- `apps/frontend/src/components/ui/data-table/data-table.tsx` — Updated: BulkAction interface export; enableRowSelection + bulkActions props; checkbox selection column; bulk action bar; row highlighting
+- `apps/frontend/src/app/(dashboard)/cars/cars-client.tsx` — Updated: bulk Set Available / Set Out of Service / Delete; CSV import button + CsvImportDialog; SavedViewsToolbar
+- `apps/frontend/src/app/(dashboard)/customers/customers-client.tsx` — Updated: CSV import button + CsvImportDialog
+- `apps/frontend/src/components/shared/csv-import/csv-import-dialog.tsx` — New: template download, drag-drop file zone, import result display (created/skipped/errors)
+- `apps/frontend/src/components/shared/saved-views/saved-views-toolbar.tsx` — New: per-page saved filter views with load/default/delete/save current filters
+- `apps/backend/src/modules/saved-views/saved-views.service.ts` — New: listForPage, save, setDefault (unsets others first), delete
+- `apps/backend/src/modules/saved-views/saved-views.controller.ts` — New: GET/POST/PATCH/DELETE under `/saved-views`
+- `apps/backend/src/modules/saved-views/saved-views.module.ts` — New
+- `apps/backend/src/modules/import/import.service.ts` — New: inline parseCSV(); importCars(); importCustomers() — no external csv lib; CustomerSource set to `ADMIN_CREATED`; only valid CustomerFlag values (BLACKLISTED/WATCHLIST/VIP)
+- `apps/backend/src/modules/import/import.controller.ts` — New: POST `/import/cars` + `/import/customers` with Multer FileInterceptor (memoryStorage)
+- `apps/backend/src/modules/import/import.module.ts` — New
+- `apps/frontend/src/lib/api.ts` — Extended: postForm(); SavedView type + savedViewsApi; ImportResult type + importApi
+
+**6d — Platform config + Help:**
+- `apps/backend/src/modules/webhooks/webhooks.service.ts` — New: CRUD + deliveries()
+- `apps/backend/src/modules/webhooks/webhooks.controller.ts` — New: full REST + GET `/webhooks/:id/deliveries`
+- `apps/backend/src/modules/webhooks/webhooks.module.ts` — New
+- `apps/backend/src/modules/api-keys/api-keys.service.ts` — New: create() generates `sk_{48 hex chars}` stored as SHA-256 hash; plaintext returned once only
+- `apps/backend/src/modules/api-keys/api-keys.controller.ts` — New
+- `apps/backend/src/modules/api-keys/api-keys.module.ts` — New
+- `apps/backend/src/modules/feature-flags/feature-flags.service.ts` — New: upsert() + list() + delete()
+- `apps/backend/src/modules/feature-flags/feature-flags.controller.ts` — New
+- `apps/backend/src/modules/feature-flags/feature-flags.module.ts` — New
+- `apps/backend/src/app.module.ts` — Added all Phase 6 modules
+- `apps/frontend/src/lib/api.ts` — Extended: Webhook/ApiKey/CreatedApiKey/FeatureFlag types + webhooksApi/apiKeysApi/featureFlagsApi
+- `apps/frontend/src/app/(dashboard)/system/settings/settings-client.tsx` — New: 3-tab page (Webhooks, API Keys, Feature Flags); webhook create sheet with event quick-add; API key create dialog with one-time reveal + copy; feature flag toggle with rollout %
+- `apps/frontend/src/app/(dashboard)/system/settings/page.tsx` — Updated stub
+- `apps/frontend/src/app/(dashboard)/help/page.tsx` — New: keyboard shortcuts, module reference cards (link to each section), CSV import format reference tables, support blurb
+
+**Tests:** N/A
+**Migration:** No — all Phase 6 Prisma models (Notification, Webhook, WebhookDelivery, ApiKey, FeatureFlag, SavedView) already in schema
+
+**Notes:**
+- Recharts color tokens `--chart-N` are not defined in this project's CSS theme; hardcoded HSL values used in reports client instead
+- Prisma 6: `$queryRawUnsafe<Type>()` doesn't accept generic type arguments — use `(await ...) as Array<{...}>` pattern
+- NotificationsModule is `@Global()` so other services can call `NotificationsService.notify()` without re-importing
+- BullMQ is installed but not used for Phase 6 — notifications are synchronous in-app DB writes (simpler, sufficient for v1)
+- CSV import avoids `csv-parse` dependency; inline parser handles quoted fields and CRLF/LF line endings
+- `postForm` on api client is a raw `fetch` (no `Content-Type: application/json`) so multipart boundary is set correctly by the browser
+- SavedView Prisma model and migration already in schema from Phase 1 — no new migration needed
+- API key: only the create response includes the plaintext `key` field; subsequent list/get never return it
+
+**Commit:** 676015b, 62c965d
+**PR:** TBD — push branch then: `gh pr create --base main --title "feat(p6): Phase 6 — Insights & Integrations"`
+
+---
+
+## [2026-05-16 14:00] V1 Completion — Profile, 2FA, Audit Log, Invoice PDF
+
+**Phase:** V1 completion pass
+**Scope:** Fill remaining stubs: profile backend (get/update/change-password/2FA TOTP/), audit log frontend, invoice PDF generation (pdfkit)
+
+**Files touched:**
+- `apps/backend/src/modules/profile/profile.service.ts` — New: getProfile (fresh from DB), updateProfile, changePassword (argon2 verify+hash), setup2fa (otplib generateSecret + QRCode.toDataURL), verify2fa (authenticator.verify + enable), disable2fa (password check + disable)
+- `apps/backend/src/modules/profile/profile.controller.ts` — New: GET /profile, PATCH /profile, POST /profile/change-password, POST /profile/2fa/setup, POST /profile/2fa/verify, DELETE /profile/2fa
+- `apps/backend/src/modules/profile/profile.module.ts` — New
+- `apps/backend/src/modules/profile/dto/profile.dto.ts` — New: UpdateProfileDto, ChangePasswordDto, Verify2faDto, Disable2faDto
+- `apps/backend/src/modules/invoices/invoice-pdf.service.ts` — New: InvoicePdfService.generateAndStream() — pdfkit A4 invoice with header, bill-to, dates, line items table, totals, footer
+- `apps/backend/src/modules/invoices/invoices.module.ts` — Updated: added InvoicePdfService provider
+- `apps/backend/src/modules/invoices/invoices.controller.ts` — Updated: GET /invoices/:id/pdf now streams PDF via pdfkit (was 501)
+- `apps/backend/src/app.module.ts` — Added ProfileModule
+- `apps/backend/package.json` — Added pdfkit + @types/pdfkit dependencies
+- `apps/frontend/src/lib/api.ts` — Updated: profileApi.me → GET /profile (fresh data); setup2fa response includes qrDataUrl; disable2fa sends body via RequestInit; added AuditLogEntry/AuditLogPage types + auditLogApi
+- `apps/frontend/src/app/(dashboard)/profile/profile-client.tsx` — Updated: QR code renders from qrDataUrl response instead of placeholder
+- `apps/frontend/src/app/(dashboard)/audit-log/audit-log-client.tsx` — New: paginated table, action/entity/date filters, expandable before/after diff rows
+- `apps/frontend/src/app/(dashboard)/audit-log/page.tsx` — Updated stub to real page
+
+**Tests:** N/A
+**Migration:** No — User model already has twoFactorSecret, twoFactorEnabled, language, themePreference
+
+**Notes:**
+- qrcode was already installed (used for admin 2FA setup); qrDataUrl is a base64 PNG data URL rendered in an <img> tag
+- pdfkit used with `require('pdfkit') as new(...) => any` pattern (no type generics needed) — @types/pdfkit added for IDE support but not required at runtime
+- Profile GET endpoint returns fresh DB data (not the JWT session snapshot) — more reliable for displaying current twoFactorEnabled state
+- DELETE /profile/2fa passes body via `RequestInit.body` — non-standard but works with NestJS @Body() decorator
+- Calendar view was already complete from Phase 3; no work needed
+
+**Commit:** dab76d7
+**PR:** TBD — push feat/v1-completion then open PR against main
+
+---
+
+## [2026-05-16 16:00] V1 Completion — Additional Drivers, Booking Detail, Avatar Upload, Car Transfer, Email SMTP Settings, Notification Prefs, Tags UI
+
+**Phase:** V1 completion pass
+**Scope:** All remaining V1 UI gaps — additional driver management on bookings, full booking detail page, avatar upload, car branch transfer dialog, SMTP settings in Settings page, notification preferences in profile, tags inline panels on cars + customers
+
+**Files touched:**
+- `apps/backend/src/modules/bookings/bookings.service.ts` — Added addDriver(), removeDriver(); extended BOOKING_SELECT with additionalDrivers + inspections; confirm() calls emailService.sendBookingConfirmation() fire-and-forget
+- `apps/backend/src/modules/bookings/bookings.controller.ts` — Added POST /:id/drivers, DELETE /:id/drivers/:driverId
+- `apps/backend/src/modules/email/email.service.ts` — New: EmailService with getTransporter() (reads smtp.* settings from DB via PrismaService), send(), sendBookingConfirmation(), sendInvoiceNotification(), sendRefundNotification()
+- `apps/backend/src/modules/email/email.module.ts` — New: @Global() EmailModule
+- `apps/backend/src/modules/tags/tags.service.ts` — New: list, create, delete, assignToCar, removeFromCar, assignToCustomer, removeFromCustomer
+- `apps/backend/src/modules/tags/tags.controller.ts` — New: GET /tags, POST /tags, DELETE /tags/:id, POST /tags/cars/:carId, DELETE /tags/cars/:carId/:tagId, POST /tags/customers/:customerId, DELETE /tags/customers/:customerId/:tagId
+- `apps/backend/src/modules/tags/tags.module.ts` — New
+- `apps/backend/src/modules/profile/profile.controller.ts` — Added POST /profile/avatar (FileInterceptor, memoryStorage, 5MB limit)
+- `apps/backend/src/modules/profile/profile.service.ts` — Added uploadAvatar() — writes file to uploads/avatars/, updates user.avatarKey
+- `apps/backend/src/app.module.ts` — Added TagsModule, EmailModule
+- `apps/frontend/src/lib/api.ts` — Added Tag interface + tagsApi; AdditionalDriver + BookingInspection interfaces; updated Booking interface (additionalDrivers, inspections, modifications, licenseSnapshot, etc.); bookingsApi.addDriver/removeDriver; profileApi.uploadAvatar; settingsApi (getAll, set, setMany); Car.tags + Customer.tags fields
+- `apps/frontend/src/components/ui/data-table/data-table.tsx` — Added onRowClick prop
+- `apps/frontend/src/app/(dashboard)/bookings/bookings-client.tsx` — Added onRowClick to navigate to /bookings/:id
+- `apps/frontend/src/app/(dashboard)/bookings/[id]/page.tsx` — New
+- `apps/frontend/src/app/(dashboard)/bookings/[id]/booking-detail-client.tsx` — New: full booking detail page with vehicle/customer/dates/financials/extras/modifications timeline/inspections/notes sections + DriversPanel (add/remove) + QuickActions (confirm/cancel)
+- `apps/frontend/src/app/(dashboard)/profile/profile-client.tsx` — Added avatar file input onChange handler (uploads via profileApi.uploadAvatar); NotificationPrefsTab (8 toggles, saves via profileApi.update); Notifications tab
+- `apps/frontend/src/app/(dashboard)/system/settings/settings-client.tsx` — Added EmailTab (SMTP host/port/TLS/user/pass/from/fromName form, hydrated from settingsApi.getAll, saved via settingsApi.setMany); Email is now the first/default tab
+- `apps/frontend/src/app/(dashboard)/cars/cars-client.tsx` — Added car transfer dialog (branch AsyncCombobox + notes; calls carsApi.transfer); TransferButton in row actions; TagsPanel inline component; tag assign/remove mutations
+- `apps/frontend/src/app/(dashboard)/customers/customers-client.tsx` — Added TagsPanel component; tag assign/remove mutations; TagsPanel in Notes tab of edit sheet
+
+**Tests:** N/A
+**Migration:** No — all required models (Tag, CarTag, CustomerTag, AdditionalDriver) already in schema
+
+**Notes:**
+- EmailModule is @Global() — EmailService can be injected anywhere without re-importing the module
+- SMTP config is stored as key-value settings (smtp.host, smtp.port, etc.) — no dedicated table
+- Avatar stored locally at uploads/avatars/{userId}.{ext} in dev — not S3 (S3 integration is a post-v1 enhancement)
+- Tags panel only shows in edit mode (not create) — needs existing entity ID to assign/remove tags
+- Car row action buttons use e.stopPropagation() to prevent onRowClick from firing when clicking edit/transfer/delete
+- TagsPanel in cars-client calls useQueryClient() (needed for cache invalidation) — imported from @tanstack/react-query at file top
+- settingsApi uses PATCH (not PUT) to match backend @Patch(':key') controller decorator
+
+**Commit:** d8d8cdd
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/5
+
+---
+
+## [2026-05-16 17:00] V1 Final — Insurance page + Styling & Branding page
+
+**Phase:** V1 completion pass
+**Scope:** The last two stub pages: /insurance and /system/styling — both now fully implemented
+
+**Files touched:**
+- `apps/backend/src/modules/insurance/insurance.service.ts` — Added listAll(carId?) with car + claims include
+- `apps/backend/src/modules/insurance/insurance.controller.ts` — Added GET /insurance/policies (global list, optional ?carId filter); added Query import
+- `apps/frontend/src/lib/api.ts` — Added InsuranceClaim interface; extended InsurancePolicy with car + claims fields; updated insuranceApi.listAll; added StylingProfile interface + stylingApi (get, update)
+- `apps/frontend/src/app/(dashboard)/insurance/insurance-client.tsx` — New: DataTable with all policies across fleet; KPI strip (active/expiring/expired counts); car filter via AsyncCombobox; create/edit Sheet; delete Dialog; StatusBadge (active=green, expiring-soon=yellow, expired=red)
+- `apps/frontend/src/app/(dashboard)/insurance/page.tsx` — Updated stub to real page
+- `apps/frontend/src/app/(dashboard)/system/styling/styling-client.tsx` — New: live theme editor with HSL color pickers (native color input + text field); token groups (Brand, Semantic, Surfaces, Sidebar, Borders); light/dark mode tabs; border-radius quick-select buttons; sticky live preview panel showing sidebar, card, buttons, badges, input — all driven by CSS custom properties; saves via PATCH /styling
+- `apps/frontend/src/app/(dashboard)/system/styling/page.tsx` — Updated stub to real page
+
+**Tests:** N/A
+**Migration:** No new migrations
+
+**Notes:**
+- Insurance is car-scoped in the DB but the frontend page shows all policies fleet-wide with optional car filter
+- GET /insurance/policies is placed BEFORE GET /insurance/policies/:id in the controller to avoid NestJS route precedence issues
+- Styling tokens stored as Record<string,string> in DB; keys are CSS variable names without the -- prefix (e.g. "primary" → stored as "221 83% 53%")
+- Live preview uses inline style object with CSS custom properties set directly on the preview div — no DOM injection or style tags needed
+- hslToHex / hexToHsl conversion utilities included inline in styling-client; small floating-point rounding is acceptable for color pickers
+- Theme changes require page refresh to propagate to the actual app — the CLAUDE.md spec says changes propagate via CSS variables; the theme loader (lib/theme.ts) applies them on load
+
+**Commit:** d355258
+**PR:** https://github.com/mg-gouda/iTourCarRental/pull/5

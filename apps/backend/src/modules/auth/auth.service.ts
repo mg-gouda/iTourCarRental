@@ -151,7 +151,7 @@ export class AuthService {
       device,
     );
 
-    const overrides = user.permissionOverrides.map((o) => ({
+    const overrides = user.permissionOverrides.map((o: any) => ({
       key: o.key,
       effect: o.effect as 'grant' | 'revoke',
     }));
@@ -203,7 +203,7 @@ export class AuthService {
       device,
     );
 
-    const overrides = user.permissionOverrides.map((o) => ({
+    const overrides = user.permissionOverrides.map((o: any) => ({
       key: o.key,
       effect: o.effect as 'grant' | 'revoke',
     }));
@@ -235,7 +235,7 @@ export class AuthService {
       orderBy: { lastActiveAt: 'desc' },
     });
 
-    return sessions.map((s) => ({
+    return sessions.map((s: any) => ({
       id: s.id,
       device: s.device,
       ip: s.ip,

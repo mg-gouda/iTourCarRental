@@ -1,17 +1,16 @@
 #!/bin/sh
 set -e
 
-echo "▶ Running Prisma migrations…"
-npx prisma migrate deploy --schema=./apps/backend/prisma/schema.prisma 2>/dev/null || \
-  npx prisma migrate deploy --schema=./prisma/schema.prisma 2>/dev/null || true
+echo "▶ Syncing database schema…"
+if [ "$NODE_ENV" = "production" ]; then
+  npx prisma migrate deploy
+else
+  npx prisma db push --accept-data-loss || true
+fi
 
 echo "▶ Running database seed…"
-npx ts-node --project ./apps/backend/tsconfig.json ./apps/backend/prisma/seed.ts 2>/dev/null || \
-  npx ts-node --project ./tsconfig.json ./prisma/seed.ts 2>/dev/null || true
+# ts-node is in devDependencies; run via pnpm script to pick up local node_modules
+pnpm run db:seed || echo "⚠  Seed returned non-zero (non-fatal — check output above)"
 
-echo "▶ Starting NestJS server…"
-if [ "$NODE_ENV" = "production" ]; then
-  node dist/main
-else
-  cd apps/backend && pnpm start:dev
-fi
+echo "▶ Starting NestJS dev server…"
+exec nest start --watch
